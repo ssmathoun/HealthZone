@@ -1,0 +1,7 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  base: "/CSE442/2026-Spring/cse-442v/jsingh44/healthzone-auth/",
+});
