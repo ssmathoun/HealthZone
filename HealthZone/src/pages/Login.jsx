@@ -39,7 +39,7 @@ export default function Login() {
 
       
 
-      navigate("/login");
+      navigate("/healthzone/dashboard");
     } catch (err) {
       setError("Network error. Please try again.");
     } finally {
