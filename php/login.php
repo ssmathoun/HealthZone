@@ -1,31 +1,36 @@
 <?php
-require "autoload.php"; // This starts session and connects to DB
+// login.php
+require "autoload.php";
 
-$Error = "";
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST");
+header("Content-Type: application/json");
 
-if($_SERVER['REQUEST_METHOD'] == "POST") {
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
+$data = json_decode(file_get_contents("php://input"), true);
+$email = $data['email'] ?? '';
+$password = $data['password'] ?? '';
 
-    if(!empty($username) && !empty($password)) {
-        // Querying the 'users' table specifically
-        $query = "SELECT id, username, password FROM users WHERE username = :username LIMIT 1";
-        $stm = $connection->prepare($query);
-        $stm->execute(['username' => $username]);
-        $row = $stm->fetch();
-
-        // Verifying the hashed password
-        if($row && password_verify($password, $row->password)) {
-            $_SESSION['user_id'] = $row->id;
-            $_SESSION['username'] = $row->username;
-
-            header("Location: index.php");
-            die;
-        } else {
-            $Error = "Invalid username or password";
-        }
-    } else {
-        $Error = "All fields are required";
-    }
+if (empty($email) || empty($password)) {
+    echo json_encode(["status" => "error", "message" => "Email and password required"]);
+    exit;
 }
-?>
+
+try {
+    $query = "SELECT id, username, password FROM users WHERE email = :email LIMIT 1";
+    $stm = $connection->prepare($query);
+    $stm->execute(['email' => $email]);
+    $user = $stm->fetch();
+
+    if ($user && password_verify($password, $user->password)) {
+        $_SESSION['user_id'] = $user->id;
+        echo json_encode([
+            "status" => "success",
+            "user" => ["id" => $user->id, "username" => $user->username]
+        ]);
+    } else {
+        echo json_encode(["status" => "error", "message" => "Invalid email or password"]);
+    }
+} catch (PDOException $e) {
+    echo json_encode(["status" => "error", "message" => "Server error"]);
+}
