@@ -23,7 +23,6 @@ export default function Login() {
 
     setError("");
     setLoading(true);
-
     try {
       const res = await fetch(API_URL, {
         method: "POST",
