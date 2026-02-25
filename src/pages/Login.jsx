@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import "../styles/auth.css";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -8,47 +7,44 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!email || !password) {
-      setError("Email and password required");
-      return;
-    }
-
     setError("");
     setLoading(true);
 
-    // Mock login
-    setTimeout(() => {
+    try {
+      const response = await fetch("https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/shabad_signup_backend/signup.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === "success") {
+        localStorage.setItem("username", data.user.username);
+        alert("Login successful!");
+        window.location.href = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/healthzone/";
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("Failed to connect to backend script.");
+    } finally {
       setLoading(false);
-      alert("Login successful (mock)");
-    }, 1000);
+    }
   };
 
   return (
     <div className="auth-container">
-        <div className="logo">HealthZone</div>
       <div className="auth-card">
         <h2>Login</h2>
-
         <form onSubmit={handleSubmit}>
-          <label>Email:</label>
-          <input type="email" onChange={(e) => setEmail(e.target.value)} />
-
-          <label>Password:</label>
-          <input type="password" onChange={(e) => setPassword(e.target.value)} />
-
-          {error && <p className="error">{error}</p>}
-
-          <button disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
-          </button>
+          <input type="email" placeholder="Email" onChange={(e) => setEmail(e.target.value)} required />
+          <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} required />
+          {error && <p style={{ color: "red" }}>{error}</p>}
+          <button disabled={loading}>{loading ? "Checking..." : "Login"}</button>
         </form>
-
-        <p className="switch">
-          Don’t have an account? <Link to="/signup">Sign Up</Link>
-        </p>
       </div>
     </div>
   );
