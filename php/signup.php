@@ -1,5 +1,4 @@
 <?php
-// signup.php
 require "autoload.php";
 
 header("Access-Control-Allow-Origin: *");
