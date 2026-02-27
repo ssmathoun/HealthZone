@@ -1,6 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { DashboardPage } from "./pages/DashboardPage";
-import { ProfileSettingsPage } from "./pages/ProfileSettingsPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { WorkoutsPage } from "./pages/WorkoutsPage";
 import { RecipesPage } from "./pages/RecipesPage";
 import { CommunityPage } from "./pages/CommunityPage";
@@ -14,19 +14,21 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check if user has a session by calling the PHP backend
-    fetch("https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/check_session.php", {
+    // Updated to use your profile.php endpoint which confirms if user is logged in
+    fetch("https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php", {
       credentials: "include",
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.loggedIn) {
+        // If the backend returns a success status, the session is valid
+        if (data.status === "success") {
           setAuthenticated(true);
         } else {
           window.location.href = LOGIN_URL;
         }
       })
       .catch(() => {
-        // If the session check endpoint doesn't exist yet, fall back to cookie check
+        // Fallback: strictly check for the existence of the PHP Session ID cookie
         const hasCookie = document.cookie.split(";").some((c) => c.trim().startsWith("PHPSESSID="));
         if (hasCookie) {
           setAuthenticated(true);
@@ -42,7 +44,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-[#fdfcfb] flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-[#d97706] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-[#64748b] text-sm">Loading...</p>
+          <p className="text-[#64748b] text-sm">Verifying Session...</p>
         </div>
       </div>
     );
@@ -59,7 +61,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/profile" element={<ProfileSettingsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/workouts" element={<WorkoutsPage />} />
           <Route path="/recipes" element={<RecipesPage />} />
           <Route path="/community" element={<CommunityPage />} />

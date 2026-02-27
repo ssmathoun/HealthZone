@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import { LandingPage } from "./pages/LandingPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { ProfileSettingsPage } from "./pages/ProfileSettingsPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { WorkoutsPage } from "./pages/WorkoutsPage";
 import { RecipesPage } from "./pages/RecipesPage";
 import { CommunityPage } from "./pages/CommunityPage";
@@ -18,7 +18,7 @@ export const router = createBrowserRouter(
     },
     {
       path: "/profile",
-      Component: ProfileSettingsPage,
+      Component: ProfilePage,
     },
     {
       path: "/workouts",
