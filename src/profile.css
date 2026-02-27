@@ -1,0 +1,126 @@
+/* HealthZone Profile Styles */
+.profile-container {
+    background-color: #f5f5f5;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: sans-serif;
+}
+
+.profile-card {
+    background-color: #212b36;
+    padding: 40px;
+    border-radius: 12px;
+    width: 400px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.avatar-wrapper {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px;
+}
+
+.profile-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #d9822b;
+    border: 3px solid #d9822b;
+}
+
+.edit-icon-label {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background-color: white;
+    color: #212b36;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.3s;
+}
+
+.edit-icon-label:hover {
+    background-color: #d9822b;
+    color: white;
+}
+
+.profile-form {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.profile-label {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+    margin-top: 15px;
+    color: #b0b0b0;
+}
+
+.profile-input {
+    padding: 12px 15px;
+    border-radius: 25px;
+    border: none;
+    background-color: #d9d9d9;
+    color: #333;
+    font-size: 14px;
+}
+
+.profile-input-readonly {
+    background-color: #5f6d7e;
+    color: #d9d9d9;
+    cursor: not-allowed;
+}
+
+.save-btn {
+    margin-top: 30px;
+    padding: 12px;
+    border-radius: 25px;
+    border: none;
+    background-color: #d9822b;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.save-btn:hover {
+    background-color: #bf7124;
+}
+
+.home-btn {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 25px;
+    border: none;
+    background-color: #5f6d7e;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.home-btn:hover {
+    background-color: #4a5664;
+}
+
+.status-message {
+    color: #ff9800;
+    font-size: 13px;
+    margin-top: 15px;
+    text-align: center;
+}
