@@ -25,10 +25,16 @@ if ($password !== $confirmPassword) {
 
 try {
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-    $query = "INSERT INTO users (email, username, password) VALUES (:email, :username, :password)";
+    $defaultAvatar = 'default_avatar.png';
+    $query = "INSERT INTO users (email, username, password, avatar) VALUES (:email, :username, :password, :avatar)";
     $stm = $connection->prepare($query);
-    
-    if ($stm->execute(['email' => $email, 'username' => $username, 'password' => $hashedPassword])) {
+
+    if ($stm->execute([
+        'email' => $email, 
+        'username' => $username, 
+        'password' => $hashedPassword,
+        'avatar' => $defaultAvatar
+    ])) {
         echo json_encode(["status" => "success", "message" => "User registered successfully!"]);
     }
 } catch (PDOException $e) {
