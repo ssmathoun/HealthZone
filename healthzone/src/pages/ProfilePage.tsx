@@ -47,9 +47,14 @@ export const ProfilePage = () => {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        setMessage('Saving...'); // Provide immediate feedback
+        setMessage('Saving...'); 
 
-        if (passwords.newPassword && passwords.newPassword !== passwords.confirmNewPassword) {
+        if ((passwords.newPassword || passwords.confirmNewPassword) && !passwords.oldPassword) {
+            setMessage("Error: Current password is required to set a new one.");
+            return;
+        }
+
+        if (passwords.newPassword !== passwords.confirmNewPassword) {
             setMessage("Error: New passwords do not match.");
             return;
         }
@@ -58,6 +63,7 @@ export const ProfilePage = () => {
         if (selectedFile) formData.append('avatar', selectedFile);
         if (passwords.oldPassword) formData.append('oldPassword', passwords.oldPassword);
         if (passwords.newPassword) formData.append('newPassword', passwords.newPassword);
+        if (passwords.confirmNewPassword) formData.append('confirmNewPassword', passwords.confirmNewPassword);
 
         try {
             const response = await fetch(API_BASE, {
@@ -70,6 +76,10 @@ export const ProfilePage = () => {
             if (result.status === 'success') {
                 setMessage(result.message);
                 setPasswords({ oldPassword: '', newPassword: '', confirmNewPassword: '' });
+                
+                if (result.avatar_url) {
+                    setPreviewUrl(`https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${result.avatar_url}`);
+                }
             } else {
                 setMessage("Error: " + result.message);
             }
@@ -109,7 +119,7 @@ export const ProfilePage = () => {
                     {message && <p className="status-message">{message}</p>}
 
                     <button type="submit" className="save-btn">Save Changes</button>
-                    <button type="button" className="home-btn" onClick={() => window.location.href='/home'}>Home</button>
+                    <button type="button" className="home-btn" onClick={() => window.location.href='https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/healthzone/'}>Home</button>
                 </form>
             </div>
         </div>
