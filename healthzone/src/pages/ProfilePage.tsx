@@ -119,7 +119,7 @@ export const ProfilePage = () => {
                     {message && <p className="status-message">{message}</p>}
 
                     <button type="submit" className="save-btn">Save Changes</button>
-                    <button type="button" className="home-btn" onClick={() => window.location.href='/home'}>Home</button>
+                    <button type="button" className="home-btn" onClick={() => window.location.href='/'}>Home</button>
                 </form>
             </div>
         </div>
