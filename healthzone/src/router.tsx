@@ -4,6 +4,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { WorkoutsPage } from "./pages/WorkoutsPage";
 import { RecipesPage } from "./pages/RecipesPage";
+import { CalendarPage } from "./pages/CalendarPage";
 import { CommunityPage } from "./pages/CommunityPage";
 
 export const router = createBrowserRouter(
@@ -29,11 +30,15 @@ export const router = createBrowserRouter(
       Component: RecipesPage,
     },
     {
+      path: "/calendar",
+      Component: CalendarPage,
+    },
+    {
       path: "/community",
       Component: CommunityPage,
     },
   ],
   {
     basename: "/CSE442/2026-Spring/cse-442v/healthzone",
-  }
+  },
 );

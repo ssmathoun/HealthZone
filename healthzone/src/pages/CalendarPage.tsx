@@ -4,41 +4,60 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  Plus,
   X,
-  Dumbbell,
   Calendar as CalendarIcon,
+  Dumbbell,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 export function CalendarPage() {
   const navigate = useNavigate();
-
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [scheduledWorkouts, setScheduledWorkouts] = useState<
+    Record<string, any[]>
+  >({});
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
-  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number | null>(
-    null,
-  );
-
-  // State to hold our recurring split: { 0: [workouts for Sunday], 1: [workouts for Monday], etc. }
-  const [workoutSplit, setWorkoutSplit] = useState<{
-    [dayOfWeek: number]: any[];
-  }>({});
-
-  // Fetch available workouts from your database
-  const [availableWorkouts, setAvailableWorkouts] = useState<any[]>([]);
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
+  const [trainerWorkouts, setTrainerWorkouts] = useState<any[]>([]);
 
   useEffect(() => {
     fetch(
       "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_premade_workouts",
+      { credentials: "include" },
     )
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) setAvailableWorkouts(data);
+        if (Array.isArray(data)) setTrainerWorkouts(data);
       })
       .catch((err) => console.error("Error fetching workouts:", err));
   }, []);
 
-  // Calendar Math
+  const fetchCalendar = () => {
+    fetch(
+      "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/calendar.php",
+      { credentials: "include" },
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success" && Array.isArray(data.data)) {
+          const formattedSchedule: Record<string, any[]> = {};
+          data.data.forEach((row: any) => {
+            const dateObj = new Date(row.scheduled_date + "T00:00:00");
+            const key = `${dateObj.getFullYear()}-${dateObj.getMonth() + 1}-${dateObj.getDate()}`;
+            if (!formattedSchedule[key]) formattedSchedule[key] = [];
+            formattedSchedule[key].push(row);
+          });
+          setScheduledWorkouts(formattedSchedule);
+        }
+      })
+      .catch((err) => console.error("Error fetching calendar:", err));
+  };
+
+  useEffect(() => {
+    fetchCalendar();
+  }, []);
+
   const daysInMonth = new Date(
     currentDate.getFullYear(),
     currentDate.getMonth() + 1,
@@ -63,44 +82,157 @@ export function CalendarPage() {
     "November",
     "December",
   ];
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const currentMonthName = monthNames[currentDate.getMonth()];
+  const currentYear = currentDate.getFullYear();
 
-  const handlePrevMonth = () =>
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+  const realToday = new Date();
+  const isToday = (day: number) =>
+    day === realToday.getDate() &&
+    currentDate.getMonth() === realToday.getMonth() &&
+    currentYear === realToday.getFullYear();
+  const isPast = (day: number) =>
+    new Date(currentYear, currentDate.getMonth(), day) <
+    new Date(
+      realToday.getFullYear(),
+      realToday.getMonth(),
+      realToday.getDate(),
     );
-  const handleNextMonth = () =>
-    setCurrentDate(
-      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
-    );
 
-  const openModalForDay = (dayOfWeek: number) => {
-    setSelectedDayOfWeek(dayOfWeek);
-    setShowWorkoutModal(true);
-  };
+  const nextMonth = () =>
+    setCurrentDate(new Date(currentYear, currentDate.getMonth() + 1, 1));
+  const prevMonth = () =>
+    setCurrentDate(new Date(currentYear, currentDate.getMonth() - 1, 1));
 
-  const addWorkoutToSplit = (workout: any) => {
-    if (selectedDayOfWeek !== null) {
-      setWorkoutSplit((prev) => ({
-        ...prev,
-        [selectedDayOfWeek]: [...(prev[selectedDayOfWeek] || []), workout],
-      }));
+  const openModalForDate = (day: number) => {
+    if (!isPast(day)) {
+      setSelectedDateStr(`${currentYear}-${currentDate.getMonth() + 1}-${day}`);
+      setShowWorkoutModal(true);
     }
-    setShowWorkoutModal(false);
-    setSelectedDayOfWeek(null);
   };
 
-  const removeWorkoutFromSplit = (
-    dayOfWeek: number,
-    workoutIndex: number,
+  // --- SAVE WORKOUT (SINGLE OR REPEATING) ---
+  const handleScheduleWorkout = async (workout: any, isSingle: boolean) => {
+    if (!selectedDateStr) return;
+
+    const [yStr, mStr, dStr] = selectedDateStr.split("-");
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10) - 1;
+    const startDay = parseInt(dStr, 10);
+
+    const datesToSave: string[] = [];
+    const localStateUpdates: { key: string; workout: any }[] = [];
+
+    let loopDate = new Date(year, month, startDay);
+    const loopLimit = isSingle ? 1 : 52; // Loop once for single, 52 times for full year
+
+    for (let i = 0; i < loopLimit; i++) {
+      const iterY = loopDate.getFullYear();
+      const iterM = String(loopDate.getMonth() + 1).padStart(2, "0");
+      const iterD = String(loopDate.getDate()).padStart(2, "0");
+
+      datesToSave.push(`${iterY}-${iterM}-${iterD}`);
+
+      localStateUpdates.push({
+        key: `${iterY}-${loopDate.getMonth() + 1}-${loopDate.getDate()}`,
+        workout: workout,
+      });
+
+      loopDate.setDate(loopDate.getDate() + 7);
+    }
+
+    try {
+      const response = await fetch(
+        "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/calendar.php",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            workout_id: workout.id,
+            user_id: 1, // Fallback
+            dates: datesToSave,
+          }),
+        },
+      );
+
+      const result = await response.json();
+
+      if (result.status === "success") {
+        // Refetch calendar to ensure we get the fresh 'calendar_id' for accurate single deletion later
+        fetchCalendar();
+      } else {
+        alert("Failed to save to database: " + result.message);
+      }
+    } catch (err) {
+      console.error("Failed to connect to server:", err);
+    }
+
+    setShowWorkoutModal(false);
+    setSelectedDateStr(null);
+  };
+
+  // --- REMOVE WORKOUT (SINGLE OR ALL) ---
+  const handleRemoveWorkout = async (
     e: React.MouseEvent,
+    calendarId: number,
+    workoutId: number,
+    isSingle: boolean,
   ) => {
     e.stopPropagation();
-    setWorkoutSplit((prev) => {
-      const updatedDay = [...(prev[dayOfWeek] || [])];
-      updatedDay.splice(workoutIndex, 1);
-      return { ...prev, [dayOfWeek]: updatedDay };
-    });
+
+    if (isSingle) {
+      if (!confirm("Remove this workout from this single day?")) return;
+    } else {
+      if (
+        !confirm(
+          "Are you sure you want to remove this workout and ALL its repeating days?",
+        )
+      )
+        return;
+    }
+
+    try {
+      const response = await fetch(
+        "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/calendar.php",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            calendar_id: isSingle ? calendarId : null,
+            workout_id: isSingle ? null : workoutId,
+            user_id: 1, // Fallback
+          }),
+        },
+      );
+
+      const result = await response.json();
+
+      if (result.status === "success") {
+        setScheduledWorkouts((prev) => {
+          const nextState = { ...prev };
+          for (const dateKey in nextState) {
+            if (isSingle) {
+              // Filter out the exact instance
+              nextState[dateKey] = nextState[dateKey].filter(
+                (w) => w.calendar_id !== calendarId,
+              );
+            } else {
+              // Filter out ALL instances of the workout
+              nextState[dateKey] = nextState[dateKey].filter(
+                (w) => w.id !== workoutId,
+              );
+            }
+            if (nextState[dateKey].length === 0) delete nextState[dateKey];
+          }
+          return nextState;
+        });
+      } else {
+        alert("Failed to remove: " + result.message);
+      }
+    } catch (err) {
+      console.error("Failed to connect to server:", err);
+    }
   };
 
   return (
@@ -110,7 +242,7 @@ export function CalendarPage() {
         <div className="flex items-center justify-between px-4 h-14">
           <button
             onClick={() => navigate("/dashboard")}
-            className="text-white p-2 hover:bg-white/10 rounded-full flex items-center gap-2"
+            className="text-white p-2 hover:bg-white/10 rounded-full"
           >
             <ArrowLeft className="size-5" />
           </button>
@@ -125,118 +257,132 @@ export function CalendarPage() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="px-4 py-6 max-w-5xl mx-auto">
-        <div className="mb-6 flex items-center gap-3">
-          <CalendarIcon className="size-8 text-[#d97706]" />
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-[#1e293b] mb-1">
-              My Workout Split
+              Workout Calendar
             </h1>
             <p className="text-[#64748b]">
-              Plan your weekly recurring workouts
+              Schedule single days or repeat weekly for a full year.
             </p>
           </div>
+          <CalendarIcon className="size-8 text-[#d97706]" />
         </div>
 
-        {/* Calendar Controls */}
-        <div className="bg-white rounded-t-lg shadow-md border-b border-gray-100 p-4 flex items-center justify-between">
+        {/* Calendar Header */}
+        <div className="bg-white rounded-t-lg shadow-sm border-b border-gray-200 p-4 flex items-center justify-between">
           <button
-            onClick={handlePrevMonth}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-[#64748b]"
+            onClick={prevMonth}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            <ChevronLeft className="size-5" />
+            <ChevronLeft className="size-6 text-[#64748b]" />
           </button>
-          <h2 className="text-lg font-bold text-[#1e293b]">
-            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+          <h2 className="text-xl font-bold text-[#1e293b]">
+            {currentMonthName} {currentYear}
           </h2>
           <button
-            onClick={handleNextMonth}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-[#64748b]"
+            onClick={nextMonth}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            <ChevronRight className="size-5" />
+            <ChevronRight className="size-6 text-[#64748b]" />
           </button>
         </div>
 
         {/* Calendar Grid */}
-        <div className="bg-white rounded-b-lg shadow-md p-4">
+        <div className="bg-white shadow-md rounded-b-lg p-4">
           <div className="grid grid-cols-7 gap-2 mb-2">
-            {dayNames.map((day) => (
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
               <div
                 key={day}
-                className="text-center text-xs font-bold text-[#64748b] uppercase tracking-wider py-2"
+                className="text-center text-sm font-semibold text-[#64748b] py-2"
               >
                 {day}
               </div>
             ))}
           </div>
-
           <div className="grid grid-cols-7 gap-2">
-            {/* Blank cells for start of month */}
             {Array.from({ length: firstDayOfMonth }).map((_, i) => (
               <div
-                key={`blank-${i}`}
-                className="min-h-[100px] bg-gray-50 rounded-lg border border-transparent opacity-50"
+                key={`empty-${i}`}
+                className="min-h-[100px] p-2 bg-gray-50 rounded-lg opacity-50 border border-transparent"
               ></div>
             ))}
 
-            {/* Actual days */}
             {Array.from({ length: daysInMonth }).map((_, i) => {
-              const dayNum = i + 1;
-              const cellDate = new Date(
-                currentDate.getFullYear(),
-                currentDate.getMonth(),
-                dayNum,
-              );
-              const dayOfWeek = cellDate.getDay();
-              const dayWorkouts = workoutSplit[dayOfWeek] || [];
-              const isToday =
-                new Date().toDateString() === cellDate.toDateString();
+              const day = i + 1;
+              const dateStr = `${currentYear}-${currentDate.getMonth() + 1}-${day}`;
+              const dayWorkouts = scheduledWorkouts[dateStr] || [];
+              const todayFlag = isToday(day);
+              const pastFlag = isPast(day);
+
+              const canAdd = !pastFlag;
 
               return (
                 <div
-                  key={dayNum}
-                  className={`min-h-[100px] bg-white rounded-lg border ${isToday ? "border-[#d97706] shadow-sm" : "border-gray-200"} p-2 flex flex-col transition-colors hover:border-[#d97706]/50`}
+                  key={day}
+                  onClick={() => openModalForDate(day)}
+                  className={`
+                    min-h-[120px] p-2 border rounded-lg flex flex-col transition-all relative overflow-hidden
+                    ${canAdd ? "cursor-pointer hover:border-[#d97706] group" : "cursor-default"}
+                    ${todayFlag ? "border-[#d97706] bg-[#d97706]/5 shadow-sm" : "border-gray-200"}
+                    ${pastFlag && !todayFlag ? "bg-gray-50/80 opacity-80 hover:opacity-100" : "bg-white"}
+                  `}
                 >
-                  <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center justify-between mb-2">
                     <span
-                      className={`text-sm font-semibold ${isToday ? "bg-[#d97706] text-white size-6 flex items-center justify-center rounded-full" : "text-[#1e293b]"}`}
+                      className={`text-sm font-bold ${todayFlag ? "text-[#d97706]" : "text-[#1e293b]"}`}
                     >
-                      {dayNum}
+                      {day}
                     </span>
-                    <button
-                      onClick={() => openModalForDay(dayOfWeek)}
-                      className="text-[#64748b] hover:text-[#d97706] hover:bg-[#d97706]/10 p-1 rounded transition-colors"
-                      title={`Add workout to all ${dayNames[dayOfWeek]}s`}
-                    >
-                      <Plus className="size-4" />
-                    </button>
+                    {todayFlag && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#d97706] bg-[#d97706]/10 px-1.5 py-0.5 rounded">
+                        Today
+                      </span>
+                    )}
                   </div>
 
-                  {/* Render workouts for this day of the week */}
-                  <div className="flex-1 space-y-1 overflow-y-auto">
+                  {/* Scheduled Workouts List */}
+                  <div className="flex-1 overflow-y-auto space-y-1 mb-6">
                     {dayWorkouts.map((w, idx) => (
                       <div
                         key={idx}
-                        className="group relative bg-[#d97706]/10 border border-[#d97706]/20 rounded p-1.5 flex items-center justify-between"
+                        className={`text-[10px] font-semibold p-1.5 rounded flex items-center justify-between gap-1 group/item ${pastFlag ? "bg-gray-200 text-gray-700" : "bg-[#d97706]/10 text-[#d97706]"}`}
                       >
-                        <div
-                          className="truncate text-[10px] font-medium text-[#d97706]"
-                          title={w.name}
-                        >
-                          {w.name}
+                        <div className="flex items-center gap-1 truncate">
+                          <Dumbbell className="size-3 shrink-0" />
+                          <span className="truncate">{w.name}</span>
                         </div>
-                        <button
-                          onClick={(e) =>
-                            removeWorkoutFromSplit(dayOfWeek, idx, e)
-                          }
-                          className="opacity-0 group-hover:opacity-100 text-[#d97706] hover:text-red-500 transition-opacity"
-                        >
-                          <X className="size-3" />
-                        </button>
+                        {/* Remove Workout Buttons */}
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
+                          <button
+                            onClick={(e) =>
+                              handleRemoveWorkout(e, w.calendar_id, w.id, true)
+                            }
+                            className="hover:text-red-500 hover:bg-red-100 p-1 rounded transition-colors"
+                            title="Remove from THIS day only"
+                          >
+                            <X className="size-3" />
+                          </button>
+                          <button
+                            onClick={(e) =>
+                              handleRemoveWorkout(e, w.calendar_id, w.id, false)
+                            }
+                            className="hover:text-red-700 hover:bg-red-100 p-1 rounded transition-colors"
+                            title="Remove ALL repeating workouts"
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
+
+                  {canAdd && (
+                    <div className="absolute bottom-2 left-2 right-2 flex items-center justify-center gap-1 text-xs text-[#d97706] font-medium opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 py-1 rounded">
+                      <Plus className="size-3" /> Add
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -255,18 +401,9 @@ export function CalendarPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-[#1e293b]">
-                  Add to Split
-                </h2>
-                <p className="text-xs text-[#64748b]">
-                  Select a workout to repeat every{" "}
-                  {selectedDayOfWeek !== null
-                    ? dayNames[selectedDayOfWeek]
-                    : "day"}
-                  .
-                </p>
-              </div>
+              <h2 className="text-lg font-semibold text-[#1e293b]">
+                Schedule Workout
+              </h2>
               <button
                 onClick={() => setShowWorkoutModal(false)}
                 className="text-[#64748b] hover:text-[#1e293b]"
@@ -274,29 +411,56 @@ export function CalendarPage() {
                 <X className="size-5" />
               </button>
             </div>
+            <p className="text-sm text-[#64748b] mb-4">
+              Choose a workout to add to the calendar.
+            </p>
 
             <div className="space-y-3">
-              {availableWorkouts.length === 0 && (
+              {trainerWorkouts.length === 0 && (
                 <p className="text-center text-sm text-gray-500 py-4">
                   Loading workouts...
                 </p>
               )}
-              {availableWorkouts.map((w) => (
+              {trainerWorkouts.map((w) => (
                 <div
                   key={w.id}
-                  onClick={() => addWorkoutToSplit(w)}
-                  className="border border-gray-200 rounded-lg p-3 hover:border-[#d97706] transition-colors cursor-pointer flex items-center gap-3"
+                  className="border border-gray-200 rounded-lg p-4 bg-white hover:border-[#d97706] transition-colors"
                 >
-                  <div className="bg-[#d97706]/10 p-2 rounded-lg">
-                    <Dumbbell className="size-5 text-[#d97706]" />
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-[#1e293b] text-sm">
+                        {w.name}
+                      </h3>
+                      <p className="text-xs text-[#64748b] mt-0.5">
+                        by {w.trainer}
+                      </p>
+                    </div>
+                    {/* Schedule Option Buttons */}
+                    <div className="flex flex-col gap-1.5 shrink-0 ml-3">
+                      <button
+                        onClick={() => handleScheduleWorkout(w, true)}
+                        className="text-[10px] font-medium bg-[#1e293b] text-white px-2.5 py-1.5 rounded hover:bg-[#334155] transition-colors"
+                      >
+                        Add Once
+                      </button>
+                      <button
+                        onClick={() => handleScheduleWorkout(w, false)}
+                        className="text-[10px] font-medium bg-[#d97706] text-white px-2.5 py-1.5 rounded hover:bg-[#b45309] transition-colors"
+                      >
+                        Repeat Weekly
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-[#1e293b] text-sm">
-                      {w.name}
-                    </h3>
-                    <p className="text-xs text-[#64748b]">
-                      {w.duration} min • {w.muscleGroups?.[0] || "Mixed"}
-                    </p>
+                  <div className="flex flex-wrap gap-1">
+                    {w.muscleGroups &&
+                      w.muscleGroups.map((mg: string) => (
+                        <span
+                          key={mg}
+                          className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded"
+                        >
+                          {mg}
+                        </span>
+                      ))}
                   </div>
                 </div>
               ))}

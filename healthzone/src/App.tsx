@@ -8,7 +8,7 @@ import { CalendarPage } from "./pages/CalendarPage"; // <-- IMPORT ADDED HERE
 import { useEffect, useState } from "react";
 
 const LOGIN_URL =
-  "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/jaspreet/#/login";
+  "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/healthzone/#/login";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
