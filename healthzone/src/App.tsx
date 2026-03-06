@@ -5,6 +5,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { WorkoutsPage } from "./pages/WorkoutsPage";
 import { RecipesPage } from "./pages/RecipesPage";
 import { CommunityPage } from "./pages/CommunityPage";
+import { CalendarPage } from "./pages/CalendarPage"; // <-- IMPORT ADDED HERE
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
 import Login from "./pages/Login";
