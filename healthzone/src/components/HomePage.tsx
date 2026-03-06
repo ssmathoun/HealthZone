@@ -212,24 +212,30 @@ export function HomePage() {
       .catch((err) => console.error("Error fetching workouts:", err));
   }, []);
 
+//added
   useEffect(() => {
     const loadNutrition = async () => {
       setNutritionLoading(true);
       setNutritionError("");
-
+  
       try {
         const res = await fetch(NUTRITION_URL, {
           method: "GET",
           credentials: "include",
         });
+        console.log("nutrition status:", res.status);          
+        console.log("nutrition ok:", res.ok);  
+  
         const data = await res.json().catch(() => null);
 
+        console.log("nutrition data:", data); 
+  
         if (!res.ok || !data || data.status !== "success") {
           setNutritionError(data?.message || "Failed to load nutrition stats");
           setNutrition(null);
           return;
         }
-
+  
         setNutrition({
           goals: data.goals,
           consumed: data.consumed,
@@ -242,10 +248,11 @@ export function HomePage() {
         setNutritionLoading(false);
       }
     };
-
+  
     loadNutrition();
   }, []);
 
+  // Post the completed workout to the Database API
   const handleFinishWorkout = async () => {
     try {
       const response = await fetch(
@@ -290,13 +297,25 @@ export function HomePage() {
     workoutsGoal: 1,
   };
 
-  const caloriesConsumed =
-    nutrition?.consumed.calories ?? fallbackStats.caloriesConsumed;
+  // =========================================================================
+  // MOCK DATA FOR THE REST OF THE DASHBOARD (Kept from your original code)
+  // =========================================================================
+  const fallbackStats = {
+    caloriesConsumed: 1850,
+    caloriesGoal: 2400,
+    proteinsConsumed: 145,
+    proteinsGoal: 180,
+    workoutsCompleted: 1,
+    workoutsGoal: 1,
+  };
+  
+  const caloriesConsumed = nutrition?.consumed.calories ?? fallbackStats.caloriesConsumed;
   const caloriesGoal = nutrition?.goals.calories ?? fallbackStats.caloriesGoal;
-
-  const proteinsConsumed =
-    nutrition?.consumed.protein ?? fallbackStats.proteinsConsumed;
+  
+  const proteinsConsumed = nutrition?.consumed.protein ?? fallbackStats.proteinsConsumed;
   const proteinsGoal = nutrition?.goals.protein ?? fallbackStats.proteinsGoal;
+  const challenges = [ { id: 1, name: "30-Day Consistency", progress: 18, total: 30, participants: 1245, yourRank: 156, icon: "🔥" } ];
+  const leaderboard = [ { rank: 1, name: "Sarah Chen", points: 2840, change: "up" }, { rank: 156, name: "You", points: 1450, change: "up", isYou: true } ];
 
   return (
     <div className="min-h-screen bg-[#fdfcfb]">
@@ -347,22 +366,10 @@ export function HomePage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <StatCard
-            icon={<Activity className="size-5 text-[#d97706]" />}
-            label="Calories"
-            value={caloriesConsumed}
-            goal={caloriesGoal}
-            percentage={Math.round((caloriesConsumed / caloriesGoal) * 100)}
-          />
-          <StatCard
-            icon={<Heart className="size-5 text-[#d97706]" />}
-            label="Protein"
-            value={proteinsConsumed}
-            goal={proteinsGoal}
-            percentage={Math.round((proteinsConsumed / proteinsGoal) * 100)}
-          />
-          <button
-            onClick={() => navigate("/workouts")}
+          <StatCard icon={<Activity className="size-5 text-[#d97706]"/>} label="Calories" value={caloriesConsumed} goal={caloriesGoal} percentage={Math.round((caloriesConsumed / caloriesGoal) * 100)} />
+          <StatCard icon={<Heart className="size-5 text-[#d97706]"/>} label="Protein" value={proteinsConsumed} goal={proteinsGoal} percentage={Math.round((proteinsConsumed / proteinsGoal) * 100)} />
+          <button 
+            onClick={() => navigate('/workouts')}
             className="bg-white rounded-lg shadow-md p-3 text-left hover:shadow-lg hover:border-[#d97706] border border-transparent transition-all cursor-pointer"
           >
             <div className="flex items-center gap-1.5 mb-2">
@@ -374,15 +381,14 @@ export function HomePage() {
             </div>
             <div className="text-xs text-[#64748b]">Track & log workouts</div>
           </button>
+          {/*<StatCard icon={<Moon className="size-5 text-[#d97706]"/>} label="Sleep" value={fallbackStats.sleepHours} goal={fallbackStats.sleepGoal} percentage={Math.round((fallbackStats.sleepHours / fallbackStats.sleepGoal) * 100)} />*/}
         </div>
         {nutritionLoading && (
-          <p className="text-xs text-[#64748b] mb-3">
-            Loading nutrition stats...
-          </p>
-        )}
-        {nutritionError && (
-          <p className="text-xs text-red-500 mb-3">{nutritionError}</p>
-        )}
+  <p className="text-xs text-[#64748b] mb-3">Loading nutrition stats...</p>
+)}
+{nutritionError && (
+  <p className="text-xs text-red-500 mb-3">{nutritionError}</p>
+)}
 
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-4">
