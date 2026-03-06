@@ -158,9 +158,24 @@ export function HomePage() {
   };
 
 
-  // =========================================================================
-  // MOCK DATA FOR THE REST OF THE DASHBOARD (Kept from your original code)
-  // =========================================================================
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/logout.php', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        window.location.href = 'https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/healthzone/#/login';
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
+      window.location.href = 'https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/healthzone/#/login';
+    }
+  };
+
   const stats = { caloriesConsumed: 1850, caloriesGoal: 2400, proteinsConsumed: 145, proteinsGoal: 180, workoutsCompleted: 1, workoutsGoal: 1, sleepHours: 7.5, sleepGoal: 8 };
   const challenges = [ { id: 1, name: "30-Day Consistency", progress: 18, total: 30, participants: 1245, yourRank: 156, icon: "🔥" } ];
   const leaderboard = [ { rank: 1, name: "Sarah Chen", points: 2840, change: "up" }, { rank: 156, name: "You", points: 1450, change: "up", isYou: true } ];
@@ -177,7 +192,7 @@ export function HomePage() {
             <button className="text-white p-2 hover:bg-white/10 rounded-full" onClick={() => navigate('/profile')}>
               <User className="size-5" />
             </button>
-            <button className="text-white p-2 hover:bg-white/10 rounded-full" onClick={() => window.location.href = 'https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/jaspreet/#/login'}>
+            <button className="text-white p-2 hover:bg-white/10 rounded-full" onClick={handleLogout}>
               <LogOut className="size-5" />
             </button>
           </div>

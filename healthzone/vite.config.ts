@@ -5,7 +5,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/CSE442/2026-Spring/cse-442v/healthzone',
+  base: '/CSE442/2026-Spring/cse-442v/healthzone/',
   build: {
     rollupOptions: {
       output: {

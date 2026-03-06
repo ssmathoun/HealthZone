@@ -1,11 +1,16 @@
 <?php
-// login.php
 require "autoload.php";
 
+header("Access-Control-Allow-Origin: https://aptitude.cse.buffalo.edu");
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Headers: Content-Type");
-header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Content-Type: application/json");
+
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
 
 $data = json_decode(file_get_contents("php://input"), true);
 $email = $data['email'] ?? '';
@@ -23,14 +28,17 @@ try {
     $user = $stm->fetch();
 
     if ($user && password_verify($password, $user->password)) {
+        // Set the session ID used by profile.php and AuthGuard
         $_SESSION['user_id'] = $user->id;
+        
         echo json_encode([
             "status" => "success",
+            "message" => "Login successful",
             "user" => ["id" => $user->id, "username" => $user->username]
         ]);
     } else {
         echo json_encode(["status" => "error", "message" => "Invalid email or password"]);
     }
 } catch (PDOException $e) {
-    echo json_encode(["status" => "error", "message" => "Server error"]);
+    echo json_encode(["status" => "error", "message" => "Server error occurred"]);
 }
