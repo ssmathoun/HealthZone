@@ -1,4 +1,5 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { CalendarPage } from "./pages/CalendarPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ProfileSettingsPage } from "./pages/ProfileSettingsPage";
 import { WorkoutsPage } from "./pages/WorkoutsPage";
@@ -6,7 +7,8 @@ import { RecipesPage } from "./pages/RecipesPage";
 import { CommunityPage } from "./pages/CommunityPage";
 import { useEffect, useState } from "react";
 
-const LOGIN_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/jaspreet/#/login";
+const LOGIN_URL =
+  "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/jaspreet/#/login";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
@@ -14,9 +16,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check if user has a session by calling the PHP backend
-    fetch("https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/check_session.php", {
-      credentials: "include",
-    })
+    fetch(
+      "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/check_session.php",
+      {
+        credentials: "include",
+      },
+    )
       .then((res) => res.json())
       .then((data) => {
         if (data.loggedIn) {
@@ -27,7 +32,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         // If the session check endpoint doesn't exist yet, fall back to cookie check
-        const hasCookie = document.cookie.split(";").some((c) => c.trim().startsWith("PHPSESSID="));
+        const hasCookie = document.cookie
+          .split(";")
+          .some((c) => c.trim().startsWith("PHPSESSID="));
         if (hasCookie) {
           setAuthenticated(true);
         } else {
@@ -63,6 +70,7 @@ export default function App() {
           <Route path="/workouts" element={<WorkoutsPage />} />
           <Route path="/recipes" element={<RecipesPage />} />
           <Route path="/community" element={<CommunityPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthGuard>

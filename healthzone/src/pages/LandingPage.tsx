@@ -1,5 +1,14 @@
-import { useNavigate } from 'react-router-dom';
-import { Dumbbell, UtensilsCrossed, Moon, TrendingUp, Users, Trophy, Shield, Smartphone } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+import {
+  Dumbbell,
+  UtensilsCrossed,
+  Moon,
+  TrendingUp,
+  Users,
+  Trophy,
+  Shield,
+  Smartphone,
+} from "lucide-react";
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -10,16 +19,16 @@ export function LandingPage() {
       <nav className="bg-[#1e293b] sticky top-0 z-50 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <button 
-              onClick={() => navigate('/dashboard')}
+            <button
+              onClick={() => navigate("/dashboard")}
               className="font-semibold text-xl hover:opacity-80 transition-opacity"
             >
               <span className="text-[#d97706]">Health</span>
               <span className="text-white">Zone</span>
             </button>
             <div className="flex items-center gap-4">
-              <button 
-                onClick={() => navigate('/dashboard')}
+              <button
+                onClick={() => navigate("/dashboard")}
                 className="px-6 py-2 bg-[#d97706] text-white rounded-full hover:bg-[#b45309] transition-colors"
               >
                 Login
@@ -36,10 +45,11 @@ export function LandingPage() {
             Your Complete Health & Fitness Platform
           </h1>
           <p className="text-xl text-[#64748b] mb-8 max-w-3xl mx-auto">
-            Track workouts, manage nutrition, monitor sleep, and connect with a community of fitness enthusiasts. Everything you need in one place.
+            Track workouts, manage nutrition, monitor sleep, and connect with a
+            community of fitness enthusiasts. Everything you need in one place.
           </p>
-          <button 
-            onClick={() => navigate('/dashboard')}
+          <button
+            onClick={() => navigate("/dashboard")}
             className="px-8 py-4 bg-[#d97706] text-white text-lg rounded-full hover:bg-[#b45309] transition-colors"
           >
             Get Started Free
@@ -54,42 +64,42 @@ export function LandingPage() {
             All-In-One Platform
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <FeatureCard 
+            <FeatureCard
               icon={<Dumbbell className="size-8 text-[#d97706]" />}
               title="Workout Tracking"
               description="Log exercises, sets, reps, and track your progress over time"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<UtensilsCrossed className="size-8 text-[#d97706]" />}
               title="Nutrition & Recipes"
               description="Manage recipes, log meals, and track your macros"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<Moon className="size-8 text-[#d97706]" />}
               title="Sleep Monitoring"
               description="Track sleep patterns and quality for better recovery"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<TrendingUp className="size-8 text-[#d97706]" />}
               title="Progress Analytics"
               description="Visualize your fitness journey with detailed charts"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<Users className="size-8 text-[#d97706]" />}
               title="Community Features"
               description="Join group activities and connect with others"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<Trophy className="size-8 text-[#d97706]" />}
               title="Challenges & Leaderboards"
               description="Compete with friends and stay motivated"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<Shield className="size-8 text-[#d97706]" />}
               title="Pro Mode"
               description="For trainers and dieticians to manage clients"
             />
-            <FeatureCard 
+            <FeatureCard
               icon={<Smartphone className="size-8 text-[#d97706]" />}
               title="Fully Responsive"
               description="Access on any device, anywhere, anytime"
@@ -107,8 +117,8 @@ export function LandingPage() {
           <p className="text-xl text-gray-300 mb-8">
             Join thousands of users already achieving their fitness goals
           </p>
-          <button 
-            onClick={() => navigate('/dashboard')}
+          <button
+            onClick={() => navigate("/dashboard")}
             className="px-8 py-4 bg-[#d97706] text-white text-lg rounded-full hover:bg-[#b45309] transition-colors"
           >
             Start Your Journey
@@ -123,12 +133,14 @@ export function LandingPage() {
             <span className="text-[#d97706]">Health</span>
             <span className="text-white">Zone</span>
           </div>
-          <p className="text-white text-sm">
-            © 2026 HealthZone (HZ Labs)
-          </p>
+          <p className="text-white text-sm">© 2026 HealthZone (HZ Labs)</p>
           <div className="flex items-center gap-6 text-white text-sm">
-            <a href="#" className="hover:text-[#d97706] transition-colors">About Us</a>
-            <a href="#" className="hover:text-[#d97706] transition-colors">Contact Us</a>
+            <a href="#" className="hover:text-[#d97706] transition-colors">
+              About Us
+            </a>
+            <a href="#" className="hover:text-[#d97706] transition-colors">
+              Contact Us
+            </a>
           </div>
         </div>
       </footer>
