@@ -1,5 +1,4 @@
 <?php
-// profile.php
 require "autoload.php";
 
 header("Access-Control-Allow-Origin: https://aptitude.cse.buffalo.edu");
@@ -21,7 +20,7 @@ try {
         $query = "SELECT username, email, avatar FROM users WHERE id = :id LIMIT 1";
         $stm = $connection->prepare($query);
         $stm->execute(['id' => $user_id]);
-        $user = $stm->fetch();
+        $user = $stm->fetch(PDO::FETCH_ASSOC); // Use FETCH_ASSOC for consistency
         echo json_encode(["status" => "success", "user" => $user]);
         exit;
     }
@@ -30,11 +29,29 @@ try {
         $hasChanged = false;
         $responseMsgs = [];
 
-        // 1. Handle Avatar
+        // 1. Avatar Logic
         if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+            $fileInfo = pathinfo($_FILES['avatar']['name']);
+            $extension = strtolower($fileInfo['extension'] ?? '');
+            
+            // MIME check
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mimeType = finfo_file($finfo, $_FILES['avatar']['tmp_name']);
+            finfo_close($finfo);
+            $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
+
+            if (!in_array($extension, $allowedExtensions) || !in_array($mimeType, $allowedMimeTypes)) {
+                echo json_encode(["status" => "error", "message" => "Invalid file type."]);
+                exit;
+            }
+
             $uploadDir = 'uploads/avatars/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0775, true);
-            $fileName = "avatar_" . $user_id . "_" . time() . "." . pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION);
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true); 
+            }
+            
+            $fileName = "avatar_" . $user_id . "_" . time() . "." . $extension;
             $targetPath = $uploadDir . $fileName;
 
             if (move_uploaded_file($_FILES['avatar']['tmp_name'], $targetPath)) {
@@ -42,46 +59,45 @@ try {
                 $upd->execute(['avatar' => $targetPath, 'id' => $user_id]);
                 $hasChanged = true;
                 $responseMsgs[] = "Avatar updated";
+            } else {
+                echo json_encode(["status" => "error", "message" => "Failed to save file. Check folder permissions."]);
+                exit;
             }
         }
 
-        // 2. Handle Password Logic
+        // 2. Password Logic
         $newPass = $_POST['newPassword'] ?? '';
         $confirmPass = $_POST['confirmNewPassword'] ?? '';
         $oldPass = $_POST['oldPassword'] ?? '';
 
         if (!empty($newPass)) {
-            // Check if they match first
             if ($newPass !== $confirmPass) {
-                echo json_encode(["status" => "error", "message" => "New and confirm passwords do not match."]);
+                echo json_encode(["status" => "error", "message" => "Passwords do not match."]);
                 exit;
             }
 
-            // Verify current password from DB
             $stm = $connection->prepare("SELECT password FROM users WHERE id = :id LIMIT 1");
             $stm->execute(['id' => $user_id]);
-            $userRecord = $stm->fetch();
+            $userRecord = $stm->fetch(PDO::FETCH_ASSOC); // Fetch as array
 
-            if ($userRecord && password_verify($oldPass, $userRecord->password)) {
+            if ($userRecord && password_verify($oldPass, $userRecord['password'])) {
                 $hashed = password_hash($newPass, PASSWORD_DEFAULT);
                 $upd = $connection->prepare("UPDATE users SET password = :pass WHERE id = :id");
                 $upd->execute(['pass' => $hashed, 'id' => $user_id]);
                 $hasChanged = true;
                 $responseMsgs[] = "Password updated";
             } else {
-                // If old password is wrong, we stop here
-                echo json_encode(["status" => "error", "message" => "Current password is incorrect."]);
+                echo json_encode(["status" => "error", "message" => "Current password incorrect."]);
                 exit;
             }
         }
 
         if (!$hasChanged) {
-            echo json_encode(["status" => "error", "message" => "No changes were provided."]);
+            echo json_encode(["status" => "error", "message" => "No changes provided."]);
         } else {
             echo json_encode(["status" => "success", "message" => implode(" and ", $responseMsgs) . " successfully."]);
         }
-        exit;
     }
 } catch (PDOException $e) {
-    echo json_encode(["status" => "error", "message" => "Server error."]);
+    echo json_encode(["status" => "error", "message" => "Database error."]);
 }
