@@ -1,9 +1,25 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Activity, Heart, Dumbbell, Moon, Plus, UtensilsCrossed, LogOut, User,
-  BookOpen, Users, Trophy, Calendar, ArrowLeft, X, Flame, MessageCircle, MapPin, Star
-} from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Activity,
+  Heart,
+  Dumbbell,
+  Moon,
+  Plus,
+  UtensilsCrossed,
+  LogOut,
+  User,
+  BookOpen,
+  Users,
+  Trophy,
+  Calendar,
+  ArrowLeft,
+  X,
+  Flame,
+  MessageCircle,
+  MapPin,
+  Star,
+} from "lucide-react";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -15,7 +31,9 @@ export function HomePage() {
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [workoutInProgress, setWorkoutInProgress] = useState(false);
-  const [completedSets, setCompletedSets] = useState<{ [key: string]: boolean }>({});
+  const [completedSets, setCompletedSets] = useState<{
+    [key: string]: boolean;
+  }>({});
   const [workoutComplete, setWorkoutComplete] = useState(false);
   const [selectedTrainer, setSelectedTrainer] = useState<any>(null);
 
@@ -23,31 +41,60 @@ export function HomePage() {
   // CREATE WORKOUT STATE
   // =========================================================================
   const [showCreateWorkoutModal, setShowCreateWorkoutModal] = useState(false);
-  const [newWorkoutName, setNewWorkoutName] = useState('');
-  const [newWorkoutDifficulty, setNewWorkoutDifficulty] = useState('Intermediate');
-  const [newWorkoutDuration, setNewWorkoutDuration] = useState('');
-  const [newWorkoutMuscleGroups, setNewWorkoutMuscleGroups] = useState<string[]>([]);
-  const [newWorkoutExercises, setNewWorkoutExercises] = useState([{ name: '', sets: '3', reps: '10', weight: 'Bodyweight', rest: '60s' }]);
+  const [newWorkoutName, setNewWorkoutName] = useState("");
+  const [newWorkoutDifficulty, setNewWorkoutDifficulty] =
+    useState("Intermediate");
+  const [newWorkoutDuration, setNewWorkoutDuration] = useState("");
+  const [newWorkoutMuscleGroups, setNewWorkoutMuscleGroups] = useState<
+    string[]
+  >([]);
+  const [newWorkoutExercises, setNewWorkoutExercises] = useState([
+    { name: "", sets: "3", reps: "10", weight: "Bodyweight", rest: "60s" },
+  ]);
   const [workoutCreated, setWorkoutCreated] = useState(false);
 
+  // =========================
+  // NUTRITION STATS (TODAY)
+  // =========================
+  const NUTRITION_URL =
+    "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/nutrition_today.php";
+
+  type NutritionToday = {
+    goals: { calories: number; protein: number; carbs: number; fat: number };
+    consumed: { calories: number; protein: number; carbs: number; fat: number };
+    percent: { calories: number; protein: number; carbs: number; fat: number };
+  };
+
+  const [nutrition, setNutrition] = useState<NutritionToday | null>(null);
+  const [nutritionLoading, setNutritionLoading] = useState(false);
+  const [nutritionError, setNutritionError] = useState<string>("");
+
   const addExercise = () => {
-    setNewWorkoutExercises(prev => [...prev, { name: '', sets: '3', reps: '10', weight: 'Bodyweight', rest: '60s' }]);
+    setNewWorkoutExercises((prev) => [
+      ...prev,
+      { name: "", sets: "3", reps: "10", weight: "Bodyweight", rest: "60s" },
+    ]);
   };
 
   const updateExercise = (index: number, field: string, value: string) => {
-    setNewWorkoutExercises(prev => prev.map((ex, i) => i === index ? { ...ex, [field]: value } : ex));
+    setNewWorkoutExercises((prev) =>
+      prev.map((ex, i) => (i === index ? { ...ex, [field]: value } : ex)),
+    );
   };
 
   const removeExercise = (index: number) => {
-    if (newWorkoutExercises.length > 1) setNewWorkoutExercises(prev => prev.filter((_, i) => i !== index));
+    if (newWorkoutExercises.length > 1)
+      setNewWorkoutExercises((prev) => prev.filter((_, i) => i !== index));
   };
 
   const toggleMuscleGroup = (mg: string) => {
-    setNewWorkoutMuscleGroups(prev => prev.includes(mg) ? prev.filter(m => m !== mg) : [...prev, mg]);
+    setNewWorkoutMuscleGroups((prev) =>
+      prev.includes(mg) ? prev.filter((m) => m !== mg) : [...prev, mg],
+    );
   };
 
   const handleCreateWorkout = async () => {
-    if (!newWorkoutName || newWorkoutExercises.some(e => !e.name)) return;
+    if (!newWorkoutName || newWorkoutExercises.some((e) => !e.name)) return;
     try {
       const payload = {
         name: newWorkoutName,
@@ -55,66 +102,107 @@ export function HomePage() {
         duration: parseInt(newWorkoutDuration) || 30,
         calories: (parseInt(newWorkoutDuration) || 30) * 8,
         muscleGroups: newWorkoutMuscleGroups,
-        exercises: newWorkoutExercises.map(e => ({ ...e, sets: parseInt(e.sets) || 3 })),
+        exercises: newWorkoutExercises.map((e) => ({
+          ...e,
+          sets: parseInt(e.sets) || 3,
+        })),
       };
-      const response = await fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=create_workout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=create_workout",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        },
+      );
       const data = await response.json();
-      if (data.status === 'success') {
+      if (data.status === "success") {
         setWorkoutCreated(true);
       } else {
-        // Still show success locally even if backend isn't ready
         setWorkoutCreated(true);
       }
     } catch {
-      // Backend not ready yet — show success locally
       setWorkoutCreated(true);
     }
   };
 
   const resetCreateWorkout = () => {
-    setShowCreateWorkoutModal(false); setWorkoutCreated(false); setNewWorkoutName('');
-    setNewWorkoutDifficulty('Intermediate'); setNewWorkoutDuration(''); setNewWorkoutMuscleGroups([]);
-    setNewWorkoutExercises([{ name: '', sets: '3', reps: '10', weight: 'Bodyweight', rest: '60s' }]);
+    setShowCreateWorkoutModal(false);
+    setWorkoutCreated(false);
+    setNewWorkoutName("");
+    setNewWorkoutDifficulty("Intermediate");
+    setNewWorkoutDuration("");
+    setNewWorkoutMuscleGroups([]);
+    setNewWorkoutExercises([
+      { name: "", sets: "3", reps: "10", weight: "Bodyweight", rest: "60s" },
+    ]);
   };
 
   // =========================================================================
   // MEAL LOGGER STATE
   // =========================================================================
   const [showMealModal, setShowMealModal] = useState(false);
-  const [mealName, setMealName] = useState('');
-  const [mealCalories, setMealCalories] = useState('');
-  const [mealProtein, setMealProtein] = useState('');
-  const [mealCarbs, setMealCarbs] = useState('');
-  const [mealFat, setMealFat] = useState('');
-  const [mealType, setMealType] = useState('lunch');
+  const [mealName, setMealName] = useState("");
+  const [mealCalories, setMealCalories] = useState("");
+  const [mealProtein, setMealProtein] = useState("");
+  const [mealCarbs, setMealCarbs] = useState("");
+  const [mealFat, setMealFat] = useState("");
+  const [mealType, setMealType] = useState("lunch");
   const [mealLogged, setMealLogged] = useState(false);
   const [loggedMeals, setLoggedMeals] = useState<any[]>([
-    { id: 1, name: 'Oatmeal with Berries', type: 'breakfast', calories: 350, protein: 12, carbs: 55, fat: 8 },
-    { id: 2, name: 'Chicken Salad', type: 'lunch', calories: 480, protein: 42, carbs: 20, fat: 18 },
+    {
+      id: 1,
+      name: "Oatmeal with Berries",
+      type: "breakfast",
+      calories: 350,
+      protein: 12,
+      carbs: 55,
+      fat: 8,
+    },
+    {
+      id: 2,
+      name: "Chicken Salad",
+      type: "lunch",
+      calories: 480,
+      protein: 42,
+      carbs: 20,
+      fat: 18,
+    },
   ]);
 
   const resetMealForm = () => {
-    setMealName(''); setMealCalories(''); setMealProtein(''); setMealCarbs(''); setMealFat(''); setMealType('lunch'); setMealLogged(false); setShowMealModal(false);
+    setMealName("");
+    setMealCalories("");
+    setMealProtein("");
+    setMealCarbs("");
+    setMealFat("");
+    setMealType("lunch");
+    setMealLogged(false);
+    setShowMealModal(false);
   };
 
   const handleLogMeal = () => {
     if (!mealName || !mealCalories) return;
-    setLoggedMeals(prev => [...prev, {
-      id: Date.now(), name: mealName, type: mealType,
-      calories: parseInt(mealCalories) || 0, protein: parseInt(mealProtein) || 0,
-      carbs: parseInt(mealCarbs) || 0, fat: parseInt(mealFat) || 0,
-    }]);
+    setLoggedMeals((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        name: mealName,
+        type: mealType,
+        calories: parseInt(mealCalories) || 0,
+        protein: parseInt(mealProtein) || 0,
+        carbs: parseInt(mealCarbs) || 0,
+        fat: parseInt(mealFat) || 0,
+      },
+    ]);
     setMealLogged(true);
   };
 
-  // Fetch Workouts from your actual Database API
   useEffect(() => {
-    fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_premade_workouts')
+    fetch(
+      "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_premade_workouts",
+    )
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -124,22 +212,65 @@ export function HomePage() {
       .catch((err) => console.error("Error fetching workouts:", err));
   }, []);
 
+  //added
+  useEffect(() => {
+    const loadNutrition = async () => {
+      setNutritionLoading(true);
+      setNutritionError("");
+
+      try {
+        const res = await fetch(NUTRITION_URL, {
+          method: "GET",
+          credentials: "include",
+        });
+        console.log("nutrition status:", res.status);
+        console.log("nutrition ok:", res.ok);
+
+        const data = await res.json().catch(() => null);
+
+        console.log("nutrition data:", data);
+
+        if (!res.ok || !data || data.status !== "success") {
+          setNutritionError(data?.message || "Failed to load nutrition stats");
+          setNutrition(null);
+          return;
+        }
+
+        setNutrition({
+          goals: data.goals,
+          consumed: data.consumed,
+          percent: data.percent,
+        });
+      } catch {
+        setNutritionError("Failed to load nutrition stats");
+        setNutrition(null);
+      } finally {
+        setNutritionLoading(false);
+      }
+    };
+
+    loadNutrition();
+  }, []);
+
   // Post the completed workout to the Database API
   const handleFinishWorkout = async () => {
     try {
-      const response = await fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=finish_workout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          workout_id: selectedWorkout.id,
-          user_id: 1 // Fallback if session isn't carrying over during dev
-        })
-      });
-      
+      const response = await fetch(
+        "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=finish_workout",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workout_id: selectedWorkout.id,
+            user_id: 1,
+          }),
+        },
+      );
+
       const data = await response.json();
 
-      if (data.status === 'success') {
-        setWorkoutComplete(true); 
+      if (data.status === "success") {
+        setWorkoutComplete(true);
       } else {
         alert("Failed to log workout: " + data.message);
       }
@@ -149,35 +280,75 @@ export function HomePage() {
     }
   };
 
-  const resetWorkout = () => { 
-    setSelectedWorkout(null); 
-    setWorkoutInProgress(false); 
-    setCompletedSets({}); 
-    setWorkoutComplete(false); 
+  const resetWorkout = () => {
+    setSelectedWorkout(null);
+    setWorkoutInProgress(false);
+    setCompletedSets({});
+    setWorkoutComplete(false);
     setShowWorkoutModal(false);
   };
-
 
   // =========================================================================
   // MOCK DATA FOR THE REST OF THE DASHBOARD (Kept from your original code)
   // =========================================================================
-  const stats = { caloriesConsumed: 1850, caloriesGoal: 2400, proteinsConsumed: 145, proteinsGoal: 180, workoutsCompleted: 1, workoutsGoal: 1, sleepHours: 7.5, sleepGoal: 8 };
-  const challenges = [ { id: 1, name: "30-Day Consistency", progress: 18, total: 30, participants: 1245, yourRank: 156, icon: "🔥" } ];
-  const leaderboard = [ { rank: 1, name: "Sarah Chen", points: 2840, change: "up" }, { rank: 156, name: "You", points: 1450, change: "up", isYou: true } ];
+  const fallbackStats = {
+    caloriesConsumed: 1850,
+    caloriesGoal: 2400,
+    proteinsConsumed: 145,
+    proteinsGoal: 180,
+    workoutsCompleted: 1,
+    workoutsGoal: 1,
+  };
+
+  const caloriesConsumed =
+    nutrition?.consumed.calories ?? fallbackStats.caloriesConsumed;
+  const caloriesGoal = nutrition?.goals.calories ?? fallbackStats.caloriesGoal;
+
+  const proteinsConsumed =
+    nutrition?.consumed.protein ?? fallbackStats.proteinsConsumed;
+  const proteinsGoal = nutrition?.goals.protein ?? fallbackStats.proteinsGoal;
+  const challenges = [
+    {
+      id: 1,
+      name: "30-Day Consistency",
+      progress: 18,
+      total: 30,
+      participants: 1245,
+      yourRank: 156,
+      icon: "🔥",
+    },
+  ];
+  const leaderboard = [
+    { rank: 1, name: "Sarah Chen", points: 2840, change: "up" },
+    { rank: 156, name: "You", points: 1450, change: "up", isYou: true },
+  ];
 
   return (
     <div className="min-h-screen bg-[#fdfcfb]">
       {/* Navigation */}
       <nav className="bg-[#1e293b] sticky top-0 z-50 shadow-md">
         <div className="flex items-center justify-between px-4 h-14">
-          <button onClick={() => navigate('/dashboard')} className="font-semibold text-lg hover:opacity-80 transition-opacity">
-            <span className="text-[#d97706]">Health</span><span className="text-white">Zone</span>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="font-semibold text-lg hover:opacity-80 transition-opacity"
+          >
+            <span className="text-[#d97706]">Health</span>
+            <span className="text-white">Zone</span>
           </button>
           <div className="flex items-center gap-1">
-            <button className="text-white p-2 hover:bg-white/10 rounded-full" onClick={() => navigate('/profile')}>
+            <button
+              className="text-white p-2 hover:bg-white/10 rounded-full"
+              onClick={() => navigate("/profile")}
+            >
               <User className="size-5" />
             </button>
-            <button className="text-white p-2 hover:bg-white/10 rounded-full" onClick={() => window.location.href = 'https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/jaspreet/#/login'}>
+            <button
+              className="text-white p-2 hover:bg-white/10 rounded-full"
+              onClick={() =>
+                (window.location.href =
+                  "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/healthzone/#/login")
+              }
+            >
               <LogOut className="size-5" />
             </button>
           </div>
@@ -187,82 +358,155 @@ export function HomePage() {
       {/* Main Content */}
       <main className="px-4 py-4 max-w-4xl mx-auto">
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-[#1e293b] mb-1">Welcome back! 💪</h1>
+          <h1 className="text-2xl font-bold text-[#1e293b] mb-1">
+            Welcome back! 💪
+          </h1>
           <p className="text-[#64748b] text-sm">
-            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+            })}
           </p>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <StatCard icon={<Activity className="size-5 text-[#d97706]"/>} label="Calories" value={stats.caloriesConsumed} goal={stats.caloriesGoal} percentage={Math.round((stats.caloriesConsumed / stats.caloriesGoal) * 100)} />
-          <StatCard icon={<Heart className="size-5 text-[#d97706]"/>} label="Protein" value={stats.proteinsConsumed} goal={stats.proteinsGoal} percentage={Math.round((stats.proteinsConsumed / stats.proteinsGoal) * 100)} />
-          <button 
-            onClick={() => navigate('/workouts')}
+          <StatCard
+            icon={<Activity className="size-5 text-[#d97706]" />}
+            label="Calories"
+            value={caloriesConsumed}
+            goal={caloriesGoal}
+            percentage={Math.round((caloriesConsumed / caloriesGoal) * 100)}
+          />
+          <StatCard
+            icon={<Heart className="size-5 text-[#d97706]" />}
+            label="Protein"
+            value={proteinsConsumed}
+            goal={proteinsGoal}
+            percentage={Math.round((proteinsConsumed / proteinsGoal) * 100)}
+          />
+          <button
+            onClick={() => navigate("/workouts")}
             className="bg-white rounded-lg shadow-md p-3 text-left hover:shadow-lg hover:border-[#d97706] border border-transparent transition-all cursor-pointer"
           >
             <div className="flex items-center gap-1.5 mb-2">
               <Dumbbell className="size-5 text-[#d97706]" />
               <span className="text-xs text-[#64748b]">Workouts</span>
             </div>
-            <div className="text-sm font-bold text-[#d97706] mb-1">View All →</div>
+            <div className="text-sm font-bold text-[#d97706] mb-1">
+              View All →
+            </div>
             <div className="text-xs text-[#64748b]">Track & log workouts</div>
           </button>
-          <StatCard icon={<Moon className="size-5 text-[#d97706]"/>} label="Sleep" value={stats.sleepHours} goal={stats.sleepGoal} percentage={Math.round((stats.sleepHours / stats.sleepGoal) * 100)} unit="hrs" />
+          {/*<StatCard icon={<Moon className="size-5 text-[#d97706]"/>} label="Sleep" value={fallbackStats.sleepHours} goal={fallbackStats.sleepGoal} percentage={Math.round((fallbackStats.sleepHours / fallbackStats.sleepGoal) * 100)} />*/}
         </div>
+        {nutritionLoading && (
+          <p className="text-xs text-[#64748b] mb-3">
+            Loading nutrition stats...
+          </p>
+        )}
+        {nutritionError && (
+          <p className="text-xs text-red-500 mb-3">{nutritionError}</p>
+        )}
 
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-          <h2 className="text-base font-semibold text-[#1e293b] mb-3">Quick Actions</h2>
+          <h2 className="text-base font-semibold text-[#1e293b] mb-3">
+            Quick Actions
+          </h2>
           <div className="grid grid-cols-2 gap-3">
-            {/* LOG WORKOUT BUTTON */}
-            <button onClick={() => setShowWorkoutModal(true)} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+            <button
+              onClick={() => setShowWorkoutModal(true)}
+              className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+            >
               <Dumbbell className="size-6" />
               <span className="text-xs font-medium">Log Workout</span>
             </button>
-            {/* CREATE WORKOUT BUTTON */}
-            <button onClick={() => setShowCreateWorkoutModal(true)} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+            <button
+              onClick={() => setShowCreateWorkoutModal(true)}
+              className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+            >
               <Plus className="size-6" />
               <span className="text-xs font-medium">Create Workout</span>
             </button>
-            <button onClick={() => setShowMealModal(true)} className="bg-[#1e293b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+            <button
+              onClick={() => setShowMealModal(true)}
+              className="bg-[#1e293b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+            >
               <UtensilsCrossed className="size-6" />
               <span className="text-xs font-medium">Log Meal</span>
             </button>
-            <button onClick={() => navigate('/recipes')} className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+            <button
+              onClick={() => navigate("/recipes")}
+              className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+            >
               <BookOpen className="size-6" />
               <span className="text-xs font-medium">Recipes</span>
             </button>
+
+            {/* NEW CALENDAR BUTTON */}
+            <button
+              onClick={() => navigate("/calendar")}
+              className="col-span-2 bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+            >
+              <Calendar className="size-6" />
+              <span className="text-sm font-medium">View Calendar</span>
+            </button>
           </div>
         </div>
+
         {/* Today's Meals */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <UtensilsCrossed className="size-5 text-[#d97706]" />
-              <h2 className="text-base font-semibold text-[#1e293b]">Today's Meals</h2>
+              <h2 className="text-base font-semibold text-[#1e293b]">
+                Today's Meals
+              </h2>
             </div>
-            <button onClick={() => setShowMealModal(true)} className="text-xs text-[#d97706] font-medium">+ Add</button>
+            <button
+              onClick={() => setShowMealModal(true)}
+              className="text-xs text-[#d97706] font-medium"
+            >
+              + Add
+            </button>
           </div>
           {loggedMeals.length === 0 ? (
-            <p className="text-sm text-[#64748b] text-center py-4">No meals logged yet today</p>
+            <p className="text-sm text-[#64748b] text-center py-4">
+              No meals logged yet today
+            </p>
           ) : (
             <div className="space-y-2">
               {loggedMeals.map((meal) => (
-                <div key={meal.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                <div
+                  key={meal.id}
+                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                >
                   <div>
-                    <p className="font-medium text-[#1e293b] text-sm">{meal.name}</p>
-                    <p className="text-xs text-[#64748b] capitalize">{meal.type} • {meal.protein}g protein • {meal.carbs}g carbs • {meal.fat}g fat</p>
+                    <p className="font-medium text-[#1e293b] text-sm">
+                      {meal.name}
+                    </p>
+                    <p className="text-xs text-[#64748b] capitalize">
+                      {meal.type} • {meal.protein}g protein • {meal.carbs}g
+                      carbs • {meal.fat}g fat
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-[#d97706] text-sm">{meal.calories}</p>
+                    <p className="font-bold text-[#d97706] text-sm">
+                      {meal.calories}
+                    </p>
                     <p className="text-xs text-[#64748b]">cal</p>
                   </div>
                 </div>
               ))}
               <div className="flex items-center justify-between pt-2 border-t border-gray-200 mt-2">
-                <span className="text-sm font-medium text-[#1e293b]">Total</span>
-                <span className="text-sm font-bold text-[#d97706]">{loggedMeals.reduce((s, m) => s + m.calories, 0)} cal</span>
+                <span className="text-sm font-medium text-[#1e293b]">
+                  Total
+                </span>
+                <span className="text-sm font-bold text-[#d97706]">
+                  {loggedMeals.reduce((s, m) => s + m.calories, 0)} cal
+                </span>
               </div>
             </div>
           )}
@@ -280,7 +524,10 @@ export function HomePage() {
               <span className="text-xs text-[#d97706]">Day 18/30</span>
             </div>
             <div className="w-full bg-white/20 rounded-full h-2 mb-2">
-              <div className="bg-[#d97706] h-2 rounded-full" style={{ width: '60%' }}></div>
+              <div
+                className="bg-[#d97706] h-2 rounded-full"
+                style={{ width: "60%" }}
+              ></div>
             </div>
             <div className="flex items-center justify-between text-xs text-gray-300">
               <span>1,245 participants</span>
@@ -294,23 +541,41 @@ export function HomePage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Trophy className="size-5 text-[#d97706]" />
-              <h2 className="text-base font-semibold text-[#1e293b]">Leaderboard</h2>
+              <h2 className="text-base font-semibold text-[#1e293b]">
+                Leaderboard
+              </h2>
             </div>
-            <button onClick={() => navigate('/community')} className="text-xs text-[#d97706] font-medium">View All</button>
+            <button
+              onClick={() => navigate("/community")}
+              className="text-xs text-[#d97706] font-medium"
+            >
+              View All
+            </button>
           </div>
           <div className="space-y-2">
             {[
-              { rank: 1, name: 'Sarah Chen', points: 2840, medal: '🥇' },
-              { rank: 2, name: 'Mike Rodriguez', points: 2735, medal: '🥈' },
-              { rank: 3, name: 'Jordan Kim', points: 2680, medal: '🥉' },
-              { rank: 156, name: 'You', points: 1450, medal: '', isYou: true },
+              { rank: 1, name: "Sarah Chen", points: 2840, medal: "🥇" },
+              { rank: 2, name: "Mike Rodriguez", points: 2735, medal: "🥈" },
+              { rank: 3, name: "Jordan Kim", points: 2680, medal: "🥉" },
+              { rank: 156, name: "You", points: 1450, medal: "", isYou: true },
             ].map((entry) => (
-              <div key={entry.rank} className={`flex items-center justify-between p-2 rounded-lg ${entry.isYou ? 'bg-[#d97706]/10 border border-[#d97706]/30' : ''}`}>
+              <div
+                key={entry.rank}
+                className={`flex items-center justify-between p-2 rounded-lg ${entry.isYou ? "bg-[#d97706]/10 border border-[#d97706]/30" : ""}`}
+              >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm w-6">{entry.medal || `#${entry.rank}`}</span>
-                  <span className={`text-sm ${entry.isYou ? 'font-bold text-[#d97706]' : 'text-[#1e293b]'}`}>{entry.name}</span>
+                  <span className="text-sm w-6">
+                    {entry.medal || `#${entry.rank}`}
+                  </span>
+                  <span
+                    className={`text-sm ${entry.isYou ? "font-bold text-[#d97706]" : "text-[#1e293b]"}`}
+                  >
+                    {entry.name}
+                  </span>
                 </div>
-                <span className="text-sm font-semibold text-[#64748b]">{entry.points.toLocaleString()} pts</span>
+                <span className="text-sm font-semibold text-[#64748b]">
+                  {entry.points.toLocaleString()} pts
+                </span>
               </div>
             ))}
           </div>
@@ -321,18 +586,36 @@ export function HomePage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <BookOpen className="size-5 text-[#d97706]" />
-              <h2 className="text-base font-semibold text-[#1e293b]">Recommended Recipes</h2>
+              <h2 className="text-base font-semibold text-[#1e293b]">
+                Recommended Recipes
+              </h2>
             </div>
-            <button onClick={() => navigate('/recipes')} className="text-xs text-[#d97706] font-medium">See All</button>
+            <button
+              onClick={() => navigate("/recipes")}
+              className="text-xs text-[#d97706] font-medium"
+            >
+              See All
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { name: 'Protein Buddha Bowl', cal: 480, time: '15 min', img: '🥗' },
-              { name: 'Grilled Chicken', cal: 420, time: '25 min', img: '🍗' },
+              {
+                name: "Protein Buddha Bowl",
+                cal: 480,
+                time: "15 min",
+                img: "🥗",
+              },
+              { name: "Grilled Chicken", cal: 420, time: "25 min", img: "🍗" },
             ].map((recipe) => (
-              <div key={recipe.name} onClick={() => navigate('/recipes')} className="border border-gray-200 rounded-lg p-3 hover:border-[#d97706] cursor-pointer transition-colors">
+              <div
+                key={recipe.name}
+                onClick={() => navigate("/recipes")}
+                className="border border-gray-200 rounded-lg p-3 hover:border-[#d97706] cursor-pointer transition-colors"
+              >
                 <div className="text-2xl mb-2">{recipe.img}</div>
-                <p className="font-medium text-[#1e293b] text-sm mb-1">{recipe.name}</p>
+                <p className="font-medium text-[#1e293b] text-sm mb-1">
+                  {recipe.name}
+                </p>
                 <div className="flex items-center gap-2 text-xs text-[#64748b]">
                   <span>🔥 {recipe.cal} cal</span>
                   <span>⏱️ {recipe.time}</span>
@@ -347,22 +630,60 @@ export function HomePage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Calendar className="size-5 text-[#d97706]" />
-              <h2 className="text-base font-semibold text-[#1e293b]">Upcoming Activities</h2>
+              <h2 className="text-base font-semibold text-[#1e293b]">
+                Upcoming Activities
+              </h2>
             </div>
-            <button onClick={() => navigate('/community')} className="text-xs text-[#d97706] font-medium">See All</button>
+            <button
+              onClick={() => navigate("/community")}
+              className="text-xs text-[#d97706] font-medium"
+            >
+              See All
+            </button>
           </div>
           <div className="space-y-2">
             {[
-              { name: 'Basketball Game', group: 'FitSquad', time: 'Today, 6:00 PM', location: 'Alumni Arena', participants: 8, icon: '🏀' },
-              { name: 'Morning Run', group: 'Runners United', time: 'Tomorrow, 6:30 AM', location: 'Delaware Park', participants: 12, icon: '🏃' },
-              { name: 'Yoga Session', group: 'Yoga Warriors', time: 'Sat, 9:00 AM', location: 'Student Union', participants: 15, icon: '🧘' },
+              {
+                name: "Basketball Game",
+                group: "FitSquad",
+                time: "Today, 6:00 PM",
+                location: "Alumni Arena",
+                participants: 8,
+                icon: "🏀",
+              },
+              {
+                name: "Morning Run",
+                group: "Runners United",
+                time: "Tomorrow, 6:30 AM",
+                location: "Delaware Park",
+                participants: 12,
+                icon: "🏃",
+              },
+              {
+                name: "Yoga Session",
+                group: "Yoga Warriors",
+                time: "Sat, 9:00 AM",
+                location: "Student Union",
+                participants: 15,
+                icon: "🧘",
+              },
             ].map((activity) => (
-              <div key={activity.name} className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:border-[#d97706] transition-colors cursor-pointer">
+              <div
+                key={activity.name}
+                className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:border-[#d97706] transition-colors cursor-pointer"
+              >
                 <div className="text-2xl">{activity.icon}</div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[#1e293b] text-sm">{activity.name}</p>
-                  <p className="text-xs text-[#64748b]">{activity.group} • {activity.time}</p>
-                  <p className="text-xs text-[#64748b] flex items-center gap-1 mt-0.5"><MapPin className="size-3" />{activity.location} • {activity.participants} going</p>
+                  <p className="font-medium text-[#1e293b] text-sm">
+                    {activity.name}
+                  </p>
+                  <p className="text-xs text-[#64748b]">
+                    {activity.group} • {activity.time}
+                  </p>
+                  <p className="text-xs text-[#64748b] flex items-center gap-1 mt-0.5">
+                    <MapPin className="size-3" />
+                    {activity.location} • {activity.participants} going
+                  </p>
                 </div>
               </div>
             ))}
@@ -373,20 +694,64 @@ export function HomePage() {
         <div className="bg-white rounded-lg shadow-md p-4 mb-4">
           <div className="flex items-center gap-2 mb-3">
             <Star className="size-5 text-[#d97706]" />
-            <h2 className="text-base font-semibold text-[#1e293b]">Connect with Experts</h2>
+            <h2 className="text-base font-semibold text-[#1e293b]">
+              Connect with Experts
+            </h2>
           </div>
           <div className="space-y-2">
             {[
-              { id: 1, name: 'Coach Sarah Miller', specialty: 'Strength Training', rating: 4.9, emoji: '💪', bio: 'NSCA Certified Strength & Conditioning Specialist with 8+ years of experience. Specializes in progressive overload training and powerlifting programs.', clients: 142, certifications: ['NSCA-CSCS', 'NASM-CPT', 'First Aid/CPR'], workouts: ['Push Day Power', 'Leg Day Builder', 'Pull Day Strength'] },
-              { id: 2, name: 'Dr. James Wilson', specialty: 'Nutrition & Performance', rating: 4.8, emoji: '🥗', bio: 'PhD in Sports Nutrition from UB. Helps athletes optimize their performance through evidence-based nutrition strategies and functional fitness routines.', clients: 98, certifications: ['PhD Sports Nutrition', 'ISSN-CISSN', 'ACE-CPT'], workouts: ['Full Body HIIT', 'Core & Mobility'] },
+              {
+                id: 1,
+                name: "Coach Sarah Miller",
+                specialty: "Strength Training",
+                rating: 4.9,
+                emoji: "💪",
+                bio: "NSCA Certified Strength & Conditioning Specialist with 8+ years of experience. Specializes in progressive overload training and powerlifting programs.",
+                clients: 142,
+                certifications: ["NSCA-CSCS", "NASM-CPT", "First Aid/CPR"],
+                workouts: [
+                  "Push Day Power",
+                  "Leg Day Builder",
+                  "Pull Day Strength",
+                ],
+              },
+              {
+                id: 2,
+                name: "Dr. James Wilson",
+                specialty: "Nutrition & Performance",
+                rating: 4.8,
+                emoji: "🥗",
+                bio: "PhD in Sports Nutrition from UB. Helps athletes optimize their performance through evidence-based nutrition strategies and functional fitness routines.",
+                clients: 98,
+                certifications: [
+                  "PhD Sports Nutrition",
+                  "ISSN-CISSN",
+                  "ACE-CPT",
+                ],
+                workouts: ["Full Body HIIT", "Core & Mobility"],
+              },
             ].map((trainer) => (
-              <div key={trainer.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
-                <div className="w-10 h-10 bg-[#d97706]/20 rounded-full flex items-center justify-center text-lg">{trainer.emoji}</div>
-                <div className="flex-1">
-                  <p className="font-medium text-[#1e293b] text-sm">{trainer.name}</p>
-                  <p className="text-xs text-[#64748b]">{trainer.specialty} • ⭐ {trainer.rating}</p>
+              <div
+                key={trainer.id}
+                className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg"
+              >
+                <div className="w-10 h-10 bg-[#d97706]/20 rounded-full flex items-center justify-center text-lg">
+                  {trainer.emoji}
                 </div>
-                <button onClick={() => setSelectedTrainer(trainer)} className="text-xs text-[#d97706] font-medium px-3 py-1 border border-[#d97706] rounded-full hover:bg-[#d97706] hover:text-white transition-colors">View</button>
+                <div className="flex-1">
+                  <p className="font-medium text-[#1e293b] text-sm">
+                    {trainer.name}
+                  </p>
+                  <p className="text-xs text-[#64748b]">
+                    {trainer.specialty} • ⭐ {trainer.rating}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedTrainer(trainer)}
+                  className="text-xs text-[#d97706] font-medium px-3 py-1 border border-[#d97706] rounded-full hover:bg-[#d97706] hover:text-white transition-colors"
+                >
+                  View
+                </button>
               </div>
             ))}
           </div>
@@ -399,35 +764,77 @@ export function HomePage() {
 
       {/* 1. Modal to select a workout */}
       {showWorkoutModal && !selectedWorkout && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowWorkoutModal(false)}>
-          <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowWorkoutModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1e293b]">Log Workout</h2>
-              <button onClick={() => setShowWorkoutModal(false)} className="text-[#64748b] hover:text-[#1e293b]"><X className="size-5" /></button>
+              <h2 className="text-lg font-semibold text-[#1e293b]">
+                Log Workout
+              </h2>
+              <button
+                onClick={() => setShowWorkoutModal(false)}
+                className="text-[#64748b] hover:text-[#1e293b]"
+              >
+                <X className="size-5" />
+              </button>
             </div>
-            <p className="text-sm text-[#64748b] mb-4">Choose a premade workout from our certified trainers</p>
-            
-            {/* List rendered from PHP database */}
+            <p className="text-sm text-[#64748b] mb-4">
+              Choose a premade workout from our certified trainers
+            </p>
+
             <div className="space-y-3">
-              {trainerWorkouts.length === 0 && <p className="text-center text-sm text-gray-500 py-4">Loading workouts from database...</p>}
+              {trainerWorkouts.length === 0 && (
+                <p className="text-center text-sm text-gray-500 py-4">
+                  Loading workouts from database...
+                </p>
+              )}
               {trainerWorkouts.map((w) => (
-                <div key={w.id} onClick={() => setSelectedWorkout(w)} className="border border-gray-200 rounded-lg p-4 hover:border-[#d97706] transition-colors cursor-pointer hover:shadow-md">
+                <div
+                  key={w.id}
+                  onClick={() => setSelectedWorkout(w)}
+                  className="border border-gray-200 rounded-lg p-4 hover:border-[#d97706] transition-colors cursor-pointer hover:shadow-md"
+                >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-[#1e293b] text-sm">{w.name}</h3>
-                      <p className="text-xs text-[#64748b] mt-0.5">by {w.trainer}</p>
+                      <h3 className="font-semibold text-[#1e293b] text-sm">
+                        {w.name}
+                      </h3>
+                      <p className="text-xs text-[#64748b] mt-0.5">
+                        by {w.trainer}
+                      </p>
                     </div>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${w.difficulty === 'Beginner-Friendly' ? 'bg-green-100 text-green-700' : 'bg-[#d97706]/10 text-[#d97706]'}`}>{w.difficulty}</span>
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${w.difficulty === "Beginner-Friendly" ? "bg-green-100 text-green-700" : "bg-[#d97706]/10 text-[#d97706]"}`}
+                    >
+                      {w.difficulty}
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-2">
-                    {w.muscleGroups && w.muscleGroups.map((mg: string) => (
-                      <span key={mg} className="text-xs bg-[#1e293b]/5 text-[#1e293b] px-2 py-0.5 rounded">{mg}</span>
-                    ))}
+                    {w.muscleGroups &&
+                      w.muscleGroups.map((mg: string) => (
+                        <span
+                          key={mg}
+                          className="text-xs bg-[#1e293b]/5 text-[#1e293b] px-2 py-0.5 rounded"
+                        >
+                          {mg}
+                        </span>
+                      ))}
                   </div>
                   <div className="flex items-center gap-4 text-xs text-[#64748b]">
-                    <span className="flex items-center gap-1">⏱️ {w.duration} min</span>
-                    <span className="flex items-center gap-1">🔥 {w.calories} cal</span>
-                    <span className="flex items-center gap-1">🏋️ {w.exercises?.length || 0} exercises</span>
+                    <span className="flex items-center gap-1">
+                      ⏱️ {w.duration} min
+                    </span>
+                    <span className="flex items-center gap-1">
+                      🔥 {w.calories} cal
+                    </span>
+                    <span className="flex items-center gap-1">
+                      🏋️ {w.exercises?.length || 0} exercises
+                    </span>
                   </div>
                 </div>
               ))}
@@ -438,115 +845,249 @@ export function HomePage() {
 
       {/* 2. Modal for Active/Selected Workout */}
       {selectedWorkout && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={resetWorkout}>
-          <div className="bg-white rounded-lg max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={resetWorkout}
+        >
+          <div
+            className="bg-white rounded-lg max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
-              <button onClick={() => { if (workoutInProgress && !workoutComplete) setWorkoutInProgress(false); else resetWorkout(); }} className="text-[#64748b] hover:text-[#1e293b] flex items-center gap-1 text-sm"><ArrowLeft className="size-4" />{workoutInProgress && !workoutComplete ? 'Overview' : 'Back'}</button>
-              <button onClick={resetWorkout} className="text-[#64748b] hover:text-[#1e293b]"><X className="size-5" /></button>
+              <button
+                onClick={() => {
+                  if (workoutInProgress && !workoutComplete)
+                    setWorkoutInProgress(false);
+                  else resetWorkout();
+                }}
+                className="text-[#64748b] hover:text-[#1e293b] flex items-center gap-1 text-sm"
+              >
+                <ArrowLeft className="size-4" />
+                {workoutInProgress && !workoutComplete ? "Overview" : "Back"}
+              </button>
+              <button
+                onClick={resetWorkout}
+                className="text-[#64748b] hover:text-[#1e293b]"
+              >
+                <X className="size-5" />
+              </button>
             </div>
-            
+
             {workoutComplete ? (
               <div className="text-center py-8">
                 <div className="text-6xl mb-4">🎉</div>
-                <h2 className="text-2xl font-bold text-[#1e293b] mb-2">Workout Complete!</h2>
-                <p className="text-[#64748b] mb-6">Great job finishing {selectedWorkout.name}</p>
+                <h2 className="text-2xl font-bold text-[#1e293b] mb-2">
+                  Workout Complete!
+                </h2>
+                <p className="text-[#64748b] mb-6">
+                  Great job finishing {selectedWorkout.name}
+                </p>
                 <div className="grid grid-cols-3 gap-3 mb-6">
                   <div className="bg-[#fdfcfb] rounded-lg p-3 border border-gray-200">
-                    <div className="text-xl font-bold text-[#d97706]">{selectedWorkout.duration} min</div>
+                    <div className="text-xl font-bold text-[#d97706]">
+                      {selectedWorkout.duration} min
+                    </div>
                     <div className="text-xs text-[#64748b]">Duration</div>
                   </div>
                   <div className="bg-[#fdfcfb] rounded-lg p-3 border border-gray-200">
-                    <div className="text-xl font-bold text-[#d97706]">{selectedWorkout.calories}</div>
+                    <div className="text-xl font-bold text-[#d97706]">
+                      {selectedWorkout.calories}
+                    </div>
                     <div className="text-xs text-[#64748b]">Calories</div>
                   </div>
                   <div className="bg-[#fdfcfb] rounded-lg p-3 border border-gray-200">
-                    <div className="text-xl font-bold text-[#d97706]">{selectedWorkout.exercises?.length || 0}</div>
+                    <div className="text-xl font-bold text-[#d97706]">
+                      {selectedWorkout.exercises?.length || 0}
+                    </div>
                     <div className="text-xs text-[#64748b]">Exercises</div>
                   </div>
                 </div>
-                <button onClick={resetWorkout} className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium">Done</button>
+                <button
+                  onClick={resetWorkout}
+                  className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium"
+                >
+                  Done
+                </button>
               </div>
             ) : workoutInProgress ? (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-[#1e293b]">{selectedWorkout.name}</h2>
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">In Progress</span>
+                  <h2 className="text-lg font-bold text-[#1e293b]">
+                    {selectedWorkout.name}
+                  </h2>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                    In Progress
+                  </span>
                 </div>
                 <div className="space-y-3 mb-6">
-                  {selectedWorkout.exercises && selectedWorkout.exercises.map((ex: any, idx: number) => { 
-                    const allDone = Array.from({ length: ex.sets }, (_, s) => completedSets[`${idx}-${s}`]).every(Boolean); 
-                    return (
-                      <div key={idx} className={`border rounded-lg p-3 transition-colors ${allDone ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <h4 className="font-semibold text-[#1e293b] text-sm">{ex.name}</h4>
-                            <p className="text-xs text-[#64748b]">{ex.weight} • Rest {ex.rest}</p>
+                  {selectedWorkout.exercises &&
+                    selectedWorkout.exercises.map((ex: any, idx: number) => {
+                      const allDone = Array.from(
+                        { length: ex.sets },
+                        (_, s) => completedSets[`${idx}-${s}`],
+                      ).every(Boolean);
+                      return (
+                        <div
+                          key={idx}
+                          className={`border rounded-lg p-3 transition-colors ${allDone ? "border-green-300 bg-green-50" : "border-gray-200"}`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <h4 className="font-semibold text-[#1e293b] text-sm">
+                                {ex.name}
+                              </h4>
+                              <p className="text-xs text-[#64748b]">
+                                {ex.weight} • Rest {ex.rest}
+                              </p>
+                            </div>
+                            {allDone && (
+                              <span className="text-green-600 text-lg">✓</span>
+                            )}
                           </div>
-                          {allDone && <span className="text-green-600 text-lg">✓</span>}
+                          <div className="flex gap-2">
+                            {Array.from({ length: ex.sets }, (_, s) => (
+                              <button
+                                key={s}
+                                onClick={() =>
+                                  setCompletedSets((prev) => ({
+                                    ...prev,
+                                    [`${idx}-${s}`]: !prev[`${idx}-${s}`],
+                                  }))
+                                }
+                                className={`flex-1 py-2 rounded text-xs font-medium transition-all ${completedSets[`${idx}-${s}`] ? "bg-[#d97706] text-white" : "bg-gray-100 text-[#64748b] hover:bg-gray-200"}`}
+                              >
+                                <div>Set {s + 1}</div>
+                                <div className="text-[10px] opacity-80">
+                                  {ex.reps}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          {Array.from({ length: ex.sets }, (_, s) => (
-                            <button key={s} onClick={() => setCompletedSets(prev => ({ ...prev, [`${idx}-${s}`]: !prev[`${idx}-${s}`] }))} className={`flex-1 py-2 rounded text-xs font-medium transition-all ${completedSets[`${idx}-${s}`] ? 'bg-[#d97706] text-white' : 'bg-gray-100 text-[#64748b] hover:bg-gray-200'}`}>
-                              <div>Set {s + 1}</div><div className="text-[10px] opacity-80">{ex.reps}</div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ); 
-                  })}
+                      );
+                    })}
                 </div>
-                {(() => { 
-                  const total = selectedWorkout.exercises ? selectedWorkout.exercises.reduce((a: number, e: any) => a + e.sets, 0) : 0; 
-                  const done = Object.values(completedSets).filter(Boolean).length; 
-                  const pct = total > 0 ? Math.round((done / total) * 100) : 0; 
+                {(() => {
+                  const total = selectedWorkout.exercises
+                    ? selectedWorkout.exercises.reduce(
+                        (a: number, e: any) => a + e.sets,
+                        0,
+                      )
+                    : 0;
+                  const done =
+                    Object.values(completedSets).filter(Boolean).length;
+                  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
                   return (
                     <div className="mb-4">
-                      <div className="flex justify-between text-xs text-[#64748b] mb-1"><span>{done}/{total} sets</span><span>{pct}%</span></div>
-                      <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-[#d97706] h-2 rounded-full transition-all" style={{ width: `${pct}%` }}></div></div>
+                      <div className="flex justify-between text-xs text-[#64748b] mb-1">
+                        <span>
+                          {done}/{total} sets
+                        </span>
+                        <span>{pct}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-[#d97706] h-2 rounded-full transition-all"
+                          style={{ width: `${pct}%` }}
+                        ></div>
+                      </div>
                     </div>
-                  ); 
+                  );
                 })()}
-                <button onClick={handleFinishWorkout} className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium flex items-center justify-center gap-2"><Trophy className="size-4" />Finish Workout</button>
+                <button
+                  onClick={handleFinishWorkout}
+                  className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium flex items-center justify-center gap-2"
+                >
+                  <Trophy className="size-4" />
+                  Finish Workout
+                </button>
               </div>
             ) : (
               <div>
-                <h2 className="text-xl font-bold text-[#1e293b] mb-1">{selectedWorkout.name}</h2>
+                <h2 className="text-xl font-bold text-[#1e293b] mb-1">
+                  {selectedWorkout.name}
+                </h2>
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-[#d97706]/20 flex items-center justify-center text-sm">👤</div>
-                  <div><p className="text-sm font-medium text-[#1e293b]">{selectedWorkout.trainer}</p></div>
+                  <div className="w-8 h-8 rounded-full bg-[#d97706]/20 flex items-center justify-center text-sm">
+                    👤
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-[#1e293b]">
+                      {selectedWorkout.trainer}
+                    </p>
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   <div className="bg-[#fdfcfb] rounded-lg p-3 text-center border border-gray-200">
-                    <div className="text-lg font-bold text-[#d97706]">{selectedWorkout.duration} min</div>
+                    <div className="text-lg font-bold text-[#d97706]">
+                      {selectedWorkout.duration} min
+                    </div>
                     <div className="text-xs text-[#64748b]">Duration</div>
                   </div>
                   <div className="bg-[#fdfcfb] rounded-lg p-3 text-center border border-gray-200">
-                    <div className="text-lg font-bold text-[#d97706]">{selectedWorkout.calories}</div>
+                    <div className="text-lg font-bold text-[#d97706]">
+                      {selectedWorkout.calories}
+                    </div>
                     <div className="text-xs text-[#64748b]">Calories</div>
                   </div>
                   <div className="bg-[#fdfcfb] rounded-lg p-3 text-center border border-gray-200">
-                    <div className="text-lg font-bold text-[#d97706]">{selectedWorkout.exercises?.length || 0}</div>
+                    <div className="text-lg font-bold text-[#d97706]">
+                      {selectedWorkout.exercises?.length || 0}
+                    </div>
                     <div className="text-xs text-[#64748b]">Exercises</div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1 mb-4">
-                  {selectedWorkout.muscleGroups && selectedWorkout.muscleGroups.map((mg: string) => (<span key={mg} className="text-xs bg-[#1e293b]/5 text-[#1e293b] px-2 py-1 rounded-full">{mg}</span>))}
-                  <span className={`text-xs px-2 py-1 rounded-full ${selectedWorkout.difficulty === 'Beginner-Friendly' ? 'bg-green-100 text-green-700' : 'bg-[#d97706]/10 text-[#d97706]'}`}>{selectedWorkout.difficulty}</span>
+                  {selectedWorkout.muscleGroups &&
+                    selectedWorkout.muscleGroups.map((mg: string) => (
+                      <span
+                        key={mg}
+                        className="text-xs bg-[#1e293b]/5 text-[#1e293b] px-2 py-1 rounded-full"
+                      >
+                        {mg}
+                      </span>
+                    ))}
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${selectedWorkout.difficulty === "Beginner-Friendly" ? "bg-green-100 text-green-700" : "bg-[#d97706]/10 text-[#d97706]"}`}
+                  >
+                    {selectedWorkout.difficulty}
+                  </span>
                 </div>
-                <h3 className="font-semibold text-[#1e293b] text-sm mb-3 flex items-center gap-2"><Dumbbell className="size-4 text-[#d97706]" />Exercises ({selectedWorkout.exercises?.length || 0})</h3>
+                <h3 className="font-semibold text-[#1e293b] text-sm mb-3 flex items-center gap-2">
+                  <Dumbbell className="size-4 text-[#d97706]" />
+                  Exercises ({selectedWorkout.exercises?.length || 0})
+                </h3>
                 <div className="space-y-2 mb-6">
-                  {selectedWorkout.exercises && selectedWorkout.exercises.map((ex: any, idx: number) => (
-                    <div key={idx} className="flex items-center gap-3 border border-gray-200 rounded-lg p-3">
-                      <div className="w-7 h-7 bg-[#d97706] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{idx + 1}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[#1e293b] text-sm">{ex.name}</p>
-                        <p className="text-xs text-[#64748b]">{ex.sets} sets × {ex.reps} • {ex.weight}</p>
+                  {selectedWorkout.exercises &&
+                    selectedWorkout.exercises.map((ex: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 border border-gray-200 rounded-lg p-3"
+                      >
+                        <div className="w-7 h-7 bg-[#d97706] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-[#1e293b] text-sm">
+                            {ex.name}
+                          </p>
+                          <p className="text-xs text-[#64748b]">
+                            {ex.sets} sets × {ex.reps} • {ex.weight}
+                          </p>
+                        </div>
+                        <span className="text-xs text-[#64748b] flex-shrink-0">
+                          {ex.rest}
+                        </span>
                       </div>
-                      <span className="text-xs text-[#64748b] flex-shrink-0">{ex.rest}</span>
-                    </div>
-                  ))}
+                    ))}
                 </div>
-                <button onClick={() => setWorkoutInProgress(true)} className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium flex items-center justify-center gap-2"><Dumbbell className="size-4" />Start Workout</button>
+                <button
+                  onClick={() => setWorkoutInProgress(true)}
+                  className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium flex items-center justify-center gap-2"
+                >
+                  <Dumbbell className="size-4" />
+                  Start Workout
+                </button>
               </div>
             )}
           </div>
@@ -555,66 +1096,179 @@ export function HomePage() {
 
       {/* Meal Logger Modal */}
       {showMealModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={resetMealForm}>
-          <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={resetMealForm}
+        >
+          <div
+            className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#1e293b]">Log Meal</h2>
-              <button onClick={resetMealForm} className="text-[#64748b] hover:text-[#1e293b]"><X className="size-5" /></button>
+              <button
+                onClick={resetMealForm}
+                className="text-[#64748b] hover:text-[#1e293b]"
+              >
+                <X className="size-5" />
+              </button>
             </div>
 
             {mealLogged ? (
               <div className="text-center py-8">
                 <div className="text-5xl mb-4">🍽️</div>
-                <h3 className="text-xl font-bold text-[#1e293b] mb-2">Meal Logged!</h3>
+                <h3 className="text-xl font-bold text-[#1e293b] mb-2">
+                  Meal Logged!
+                </h3>
                 <p className="text-[#64748b] mb-2">{mealName}</p>
-                <p className="text-sm text-[#d97706] font-medium mb-6">{mealCalories} calories</p>
-                <button onClick={resetMealForm} className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium">Done</button>
+                <p className="text-sm text-[#d97706] font-medium mb-6">
+                  {mealCalories} calories
+                </p>
+                <button
+                  onClick={resetMealForm}
+                  className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium"
+                >
+                  Done
+                </button>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex gap-2 mb-2">
-                  {['breakfast', 'lunch', 'dinner', 'snack'].map((type) => (
-                    <button key={type} onClick={() => setMealType(type)} className={`flex-1 py-2 rounded-lg text-xs font-medium capitalize transition-colors ${mealType === type ? 'bg-[#d97706] text-white' : 'bg-gray-100 text-[#64748b] hover:bg-gray-200'}`}>{type}</button>
+                  {["breakfast", "lunch", "dinner", "snack"].map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setMealType(type)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-medium capitalize transition-colors ${mealType === type ? "bg-[#d97706] text-white" : "bg-gray-100 text-[#64748b] hover:bg-gray-200"}`}
+                    >
+                      {type}
+                    </button>
                   ))}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1e293b] mb-1">Meal Name *</label>
-                  <input type="text" value={mealName} onChange={e => setMealName(e.target.value)} placeholder="e.g., Grilled Chicken Salad" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                  <label className="block text-sm font-medium text-[#1e293b] mb-1">
+                    Meal Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={mealName}
+                    onChange={(e) => setMealName(e.target.value)}
+                    placeholder="e.g., Grilled Chicken Salad"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#1e293b] mb-1">Calories *</label>
-                  <input type="number" value={mealCalories} onChange={e => setMealCalories(e.target.value)} placeholder="450" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                  <label className="block text-sm font-medium text-[#1e293b] mb-1">
+                    Calories *
+                  </label>
+                  <input
+                    type="number"
+                    value={mealCalories}
+                    onChange={(e) => setMealCalories(e.target.value)}
+                    placeholder="450"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                  />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-[#1e293b] mb-1">Protein (g)</label>
-                    <input type="number" value={mealProtein} onChange={e => setMealProtein(e.target.value)} placeholder="35" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                    <label className="block text-sm font-medium text-[#1e293b] mb-1">
+                      Protein (g)
+                    </label>
+                    <input
+                      type="number"
+                      value={mealProtein}
+                      onChange={(e) => setMealProtein(e.target.value)}
+                      placeholder="35"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[#1e293b] mb-1">Carbs (g)</label>
-                    <input type="number" value={mealCarbs} onChange={e => setMealCarbs(e.target.value)} placeholder="50" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                    <label className="block text-sm font-medium text-[#1e293b] mb-1">
+                      Carbs (g)
+                    </label>
+                    <input
+                      type="number"
+                      value={mealCarbs}
+                      onChange={(e) => setMealCarbs(e.target.value)}
+                      placeholder="50"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[#1e293b] mb-1">Fat (g)</label>
-                    <input type="number" value={mealFat} onChange={e => setMealFat(e.target.value)} placeholder="15" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                    <label className="block text-sm font-medium text-[#1e293b] mb-1">
+                      Fat (g)
+                    </label>
+                    <input
+                      type="number"
+                      value={mealFat}
+                      onChange={(e) => setMealFat(e.target.value)}
+                      placeholder="15"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                    />
                   </div>
                 </div>
                 <div>
                   <p className="text-xs text-[#64748b] mb-2">Quick Add</p>
                   <div className="flex flex-wrap gap-2">
                     {[
-                      { name: 'Protein Shake', cal: '250', pro: '30', carb: '15', fat: '5' },
-                      { name: 'Chicken & Rice', cal: '520', pro: '45', carb: '55', fat: '10' },
-                      { name: 'Greek Yogurt', cal: '150', pro: '15', carb: '12', fat: '5' },
-                      { name: 'Salad Bowl', cal: '380', pro: '28', carb: '30', fat: '14' },
+                      {
+                        name: "Protein Shake",
+                        cal: "250",
+                        pro: "30",
+                        carb: "15",
+                        fat: "5",
+                      },
+                      {
+                        name: "Chicken & Rice",
+                        cal: "520",
+                        pro: "45",
+                        carb: "55",
+                        fat: "10",
+                      },
+                      {
+                        name: "Greek Yogurt",
+                        cal: "150",
+                        pro: "15",
+                        carb: "12",
+                        fat: "5",
+                      },
+                      {
+                        name: "Salad Bowl",
+                        cal: "380",
+                        pro: "28",
+                        carb: "30",
+                        fat: "14",
+                      },
                     ].map((preset) => (
-                      <button key={preset.name} onClick={() => { setMealName(preset.name); setMealCalories(preset.cal); setMealProtein(preset.pro); setMealCarbs(preset.carb); setMealFat(preset.fat); }} className="text-xs px-3 py-1.5 border border-gray-200 rounded-full hover:border-[#d97706] hover:text-[#d97706] transition-colors">{preset.name}</button>
+                      <button
+                        key={preset.name}
+                        onClick={() => {
+                          setMealName(preset.name);
+                          setMealCalories(preset.cal);
+                          setMealProtein(preset.pro);
+                          setMealCarbs(preset.carb);
+                          setMealFat(preset.fat);
+                        }}
+                        className="text-xs px-3 py-1.5 border border-gray-200 rounded-full hover:border-[#d97706] hover:text-[#d97706] transition-colors"
+                      >
+                        {preset.name}
+                      </button>
                     ))}
                   </div>
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button onClick={resetMealForm} className="flex-1 px-4 py-2.5 border-2 border-[#64748b] text-[#64748b] rounded-lg font-medium text-sm">Cancel</button>
-                  <button onClick={handleLogMeal} disabled={!mealName || !mealCalories} className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white ${!mealName || !mealCalories ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#d97706] hover:bg-[#b45309]'}`}>Log Meal</button>
+                  <button
+                    onClick={resetMealForm}
+                    className="flex-1 px-4 py-2.5 border-2 border-[#64748b] text-[#64748b] rounded-lg font-medium text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleLogMeal}
+                    disabled={!mealName || !mealCalories}
+                    className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white ${!mealName || !mealCalories ? "bg-gray-300 cursor-not-allowed" : "bg-[#d97706] hover:bg-[#b45309]"}`}
+                  >
+                    Log Meal
+                  </button>
                 </div>
               </div>
             )}
@@ -624,52 +1278,105 @@ export function HomePage() {
 
       {/* Trainer Detail Modal */}
       {selectedTrainer && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedTrainer(null)}>
-          <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedTrainer(null)}
+        >
+          <div
+            className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1e293b]">Trainer Profile</h2>
-              <button onClick={() => setSelectedTrainer(null)} className="text-[#64748b] hover:text-[#1e293b]"><X className="size-5" /></button>
+              <h2 className="text-lg font-semibold text-[#1e293b]">
+                Trainer Profile
+              </h2>
+              <button
+                onClick={() => setSelectedTrainer(null)}
+                className="text-[#64748b] hover:text-[#1e293b]"
+              >
+                <X className="size-5" />
+              </button>
             </div>
-            
+
             <div className="text-center mb-4">
-              <div className="w-20 h-20 bg-[#d97706]/20 rounded-full flex items-center justify-center text-4xl mx-auto mb-3">{selectedTrainer.emoji}</div>
-              <h3 className="text-xl font-bold text-[#1e293b]">{selectedTrainer.name}</h3>
-              <p className="text-sm text-[#64748b]">{selectedTrainer.specialty}</p>
+              <div className="w-20 h-20 bg-[#d97706]/20 rounded-full flex items-center justify-center text-4xl mx-auto mb-3">
+                {selectedTrainer.emoji}
+              </div>
+              <h3 className="text-xl font-bold text-[#1e293b]">
+                {selectedTrainer.name}
+              </h3>
+              <p className="text-sm text-[#64748b]">
+                {selectedTrainer.specialty}
+              </p>
               <div className="flex items-center justify-center gap-4 mt-3">
-                <div className="text-center"><div className="text-lg font-bold text-[#d97706]">⭐ {selectedTrainer.rating}</div><div className="text-xs text-[#64748b]">Rating</div></div>
-                <div className="text-center"><div className="text-lg font-bold text-[#d97706]">{selectedTrainer.clients}</div><div className="text-xs text-[#64748b]">Clients</div></div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-[#d97706]">
+                    ⭐ {selectedTrainer.rating}
+                  </div>
+                  <div className="text-xs text-[#64748b]">Rating</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-[#d97706]">
+                    {selectedTrainer.clients}
+                  </div>
+                  <div className="text-xs text-[#64748b]">Clients</div>
+                </div>
               </div>
             </div>
 
             <div className="mb-4">
-              <h4 className="font-semibold text-[#1e293b] text-sm mb-2">About</h4>
-              <p className="text-sm text-[#64748b] leading-relaxed">{selectedTrainer.bio}</p>
+              <h4 className="font-semibold text-[#1e293b] text-sm mb-2">
+                About
+              </h4>
+              <p className="text-sm text-[#64748b] leading-relaxed">
+                {selectedTrainer.bio}
+              </p>
             </div>
 
             <div className="mb-4">
-              <h4 className="font-semibold text-[#1e293b] text-sm mb-2">Certifications</h4>
+              <h4 className="font-semibold text-[#1e293b] text-sm mb-2">
+                Certifications
+              </h4>
               <div className="flex flex-wrap gap-2">
                 {selectedTrainer.certifications.map((cert: string) => (
-                  <span key={cert} className="text-xs bg-[#1e293b]/5 text-[#1e293b] px-2 py-1 rounded-full">{cert}</span>
+                  <span
+                    key={cert}
+                    className="text-xs bg-[#1e293b]/5 text-[#1e293b] px-2 py-1 rounded-full"
+                  >
+                    {cert}
+                  </span>
                 ))}
               </div>
             </div>
 
             <div className="mb-4">
-              <h4 className="font-semibold text-[#1e293b] text-sm mb-2">Workouts by {selectedTrainer.name.split(' ')[1]}</h4>
+              <h4 className="font-semibold text-[#1e293b] text-sm mb-2">
+                Workouts by {selectedTrainer.name.split(" ")[1]}
+              </h4>
               <div className="space-y-2">
                 {selectedTrainer.workouts.map((w: string) => (
-                  <div key={w} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                  <div
+                    key={w}
+                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                  >
                     <div className="flex items-center gap-2">
                       <Dumbbell className="size-4 text-[#d97706]" />
-                      <span className="text-sm font-medium text-[#1e293b]">{w}</span>
+                      <span className="text-sm font-medium text-[#1e293b]">
+                        {w}
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <button onClick={() => { setSelectedTrainer(null); navigate('/workouts'); }} className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium flex items-center justify-center gap-2">
+            <button
+              onClick={() => {
+                setSelectedTrainer(null);
+                navigate("/workouts");
+              }}
+              className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium flex items-center justify-center gap-2"
+            >
               <Dumbbell className="size-4" />
               View Their Workouts
             </button>
@@ -679,51 +1386,117 @@ export function HomePage() {
 
       {/* Create Workout Modal */}
       {showCreateWorkoutModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={resetCreateWorkout}>
-          <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={resetCreateWorkout}
+        >
+          <div
+            className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1e293b]">Create Workout</h2>
-              <button onClick={resetCreateWorkout} className="text-[#64748b] hover:text-[#1e293b]"><X className="size-5" /></button>
+              <h2 className="text-lg font-semibold text-[#1e293b]">
+                Create Workout
+              </h2>
+              <button
+                onClick={resetCreateWorkout}
+                className="text-[#64748b] hover:text-[#1e293b]"
+              >
+                <X className="size-5" />
+              </button>
             </div>
 
             {workoutCreated ? (
               <div className="text-center py-8">
                 <div className="text-5xl mb-4">💪</div>
-                <h3 className="text-xl font-bold text-[#1e293b] mb-2">Workout Created!</h3>
+                <h3 className="text-xl font-bold text-[#1e293b] mb-2">
+                  Workout Created!
+                </h3>
                 <p className="text-[#64748b] mb-2">{newWorkoutName}</p>
-                <p className="text-sm text-[#d97706] font-medium mb-6">{newWorkoutExercises.length} exercises • {newWorkoutDuration || '30'} min</p>
-                <button onClick={resetCreateWorkout} className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium">Done</button>
+                <p className="text-sm text-[#d97706] font-medium mb-6">
+                  {newWorkoutExercises.length} exercises •{" "}
+                  {newWorkoutDuration || "30"} min
+                </p>
+                <button
+                  onClick={resetCreateWorkout}
+                  className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium"
+                >
+                  Done
+                </button>
               </div>
             ) : (
               <div className="space-y-4">
                 {/* Workout Name */}
                 <div>
-                  <label className="block text-sm font-medium text-[#1e293b] mb-1">Workout Name *</label>
-                  <input type="text" value={newWorkoutName} onChange={e => setNewWorkoutName(e.target.value)} placeholder="e.g., Morning Push Day" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                  <label className="block text-sm font-medium text-[#1e293b] mb-1">
+                    Workout Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newWorkoutName}
+                    onChange={(e) => setNewWorkoutName(e.target.value)}
+                    placeholder="e.g., Morning Push Day"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                  />
                 </div>
 
                 {/* Difficulty */}
                 <div>
-                  <label className="block text-sm font-medium text-[#1e293b] mb-1">Difficulty</label>
+                  <label className="block text-sm font-medium text-[#1e293b] mb-1">
+                    Difficulty
+                  </label>
                   <div className="flex gap-2">
-                    {['Beginner-Friendly', 'Intermediate', 'Advanced'].map(d => (
-                      <button key={d} onClick={() => setNewWorkoutDifficulty(d)} className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${newWorkoutDifficulty === d ? 'bg-[#d97706] text-white' : 'bg-gray-100 text-[#64748b] hover:bg-gray-200'}`}>{d.replace('-', ' ')}</button>
-                    ))}
+                    {["Beginner-Friendly", "Intermediate", "Advanced"].map(
+                      (d) => (
+                        <button
+                          key={d}
+                          onClick={() => setNewWorkoutDifficulty(d)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${newWorkoutDifficulty === d ? "bg-[#d97706] text-white" : "bg-gray-100 text-[#64748b] hover:bg-gray-200"}`}
+                        >
+                          {d.replace("-", " ")}
+                        </button>
+                      ),
+                    )}
                   </div>
                 </div>
 
                 {/* Duration */}
                 <div>
-                  <label className="block text-sm font-medium text-[#1e293b] mb-1">Duration (minutes)</label>
-                  <input type="number" value={newWorkoutDuration} onChange={e => setNewWorkoutDuration(e.target.value)} placeholder="30" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                  <label className="block text-sm font-medium text-[#1e293b] mb-1">
+                    Duration (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    value={newWorkoutDuration}
+                    onChange={(e) => setNewWorkoutDuration(e.target.value)}
+                    placeholder="30"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                  />
                 </div>
 
                 {/* Muscle Groups */}
                 <div>
-                  <label className="block text-sm font-medium text-[#1e293b] mb-1">Muscle Groups</label>
+                  <label className="block text-sm font-medium text-[#1e293b] mb-1">
+                    Muscle Groups
+                  </label>
                   <div className="flex flex-wrap gap-2">
-                    {['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Full Body', 'Cardio'].map(mg => (
-                      <button key={mg} onClick={() => toggleMuscleGroup(mg)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${newWorkoutMuscleGroups.includes(mg) ? 'bg-[#d97706] text-white' : 'bg-gray-100 text-[#64748b] hover:bg-gray-200'}`}>{mg}</button>
+                    {[
+                      "Chest",
+                      "Back",
+                      "Shoulders",
+                      "Arms",
+                      "Legs",
+                      "Core",
+                      "Full Body",
+                      "Cardio",
+                    ].map((mg) => (
+                      <button
+                        key={mg}
+                        onClick={() => toggleMuscleGroup(mg)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${newWorkoutMuscleGroups.includes(mg) ? "bg-[#d97706] text-white" : "bg-gray-100 text-[#64748b] hover:bg-gray-200"}`}
+                      >
+                        {mg}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -731,35 +1504,96 @@ export function HomePage() {
                 {/* Exercises */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-[#1e293b]">Exercises *</label>
-                    <button onClick={addExercise} className="text-xs text-[#d97706] font-medium">+ Add Exercise</button>
+                    <label className="text-sm font-medium text-[#1e293b]">
+                      Exercises *
+                    </label>
+                    <button
+                      onClick={addExercise}
+                      className="text-xs text-[#d97706] font-medium"
+                    >
+                      + Add Exercise
+                    </button>
                   </div>
                   <div className="space-y-3">
                     {newWorkoutExercises.map((ex, idx) => (
-                      <div key={idx} className="border border-gray-200 rounded-lg p-3">
+                      <div
+                        key={idx}
+                        className="border border-gray-200 rounded-lg p-3"
+                      >
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold text-[#d97706]">Exercise {idx + 1}</span>
+                          <span className="text-xs font-bold text-[#d97706]">
+                            Exercise {idx + 1}
+                          </span>
                           {newWorkoutExercises.length > 1 && (
-                            <button onClick={() => removeExercise(idx)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                            <button
+                              onClick={() => removeExercise(idx)}
+                              className="text-xs text-red-500 hover:text-red-700"
+                            >
+                              Remove
+                            </button>
                           )}
                         </div>
-                        <input type="text" value={ex.name} onChange={e => updateExercise(idx, 'name', e.target.value)} placeholder="Exercise name (e.g., Bench Press)" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                        <input
+                          type="text"
+                          value={ex.name}
+                          onChange={(e) =>
+                            updateExercise(idx, "name", e.target.value)
+                          }
+                          placeholder="Exercise name (e.g., Bench Press)"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                        />
                         <div className="grid grid-cols-4 gap-2">
                           <div>
-                            <label className="block text-xs text-[#64748b] mb-0.5">Sets</label>
-                            <input type="number" value={ex.sets} onChange={e => updateExercise(idx, 'sets', e.target.value)} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                            <label className="block text-xs text-[#64748b] mb-0.5">
+                              Sets
+                            </label>
+                            <input
+                              type="number"
+                              value={ex.sets}
+                              onChange={(e) =>
+                                updateExercise(idx, "sets", e.target.value)
+                              }
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                            />
                           </div>
                           <div>
-                            <label className="block text-xs text-[#64748b] mb-0.5">Reps</label>
-                            <input type="text" value={ex.reps} onChange={e => updateExercise(idx, 'reps', e.target.value)} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                            <label className="block text-xs text-[#64748b] mb-0.5">
+                              Reps
+                            </label>
+                            <input
+                              type="text"
+                              value={ex.reps}
+                              onChange={(e) =>
+                                updateExercise(idx, "reps", e.target.value)
+                              }
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                            />
                           </div>
                           <div>
-                            <label className="block text-xs text-[#64748b] mb-0.5">Weight</label>
-                            <input type="text" value={ex.weight} onChange={e => updateExercise(idx, 'weight', e.target.value)} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                            <label className="block text-xs text-[#64748b] mb-0.5">
+                              Weight
+                            </label>
+                            <input
+                              type="text"
+                              value={ex.weight}
+                              onChange={(e) =>
+                                updateExercise(idx, "weight", e.target.value)
+                              }
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                            />
                           </div>
                           <div>
-                            <label className="block text-xs text-[#64748b] mb-0.5">Rest</label>
-                            <input type="text" value={ex.rest} onChange={e => updateExercise(idx, 'rest', e.target.value)} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#d97706]" />
+                            <label className="block text-xs text-[#64748b] mb-0.5">
+                              Rest
+                            </label>
+                            <input
+                              type="text"
+                              value={ex.rest}
+                              onChange={(e) =>
+                                updateExercise(idx, "rest", e.target.value)
+                              }
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-[#d97706]"
+                            />
                           </div>
                         </div>
                       </div>
@@ -768,21 +1602,48 @@ export function HomePage() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <button onClick={resetCreateWorkout} className="flex-1 px-4 py-2.5 border-2 border-[#64748b] text-[#64748b] rounded-lg font-medium text-sm">Cancel</button>
-                  <button onClick={handleCreateWorkout} disabled={!newWorkoutName || newWorkoutExercises.some(e => !e.name)} className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white ${!newWorkoutName || newWorkoutExercises.some(e => !e.name) ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#d97706] hover:bg-[#b45309]'}`}>Create Workout</button>
+                  <button
+                    onClick={resetCreateWorkout}
+                    className="flex-1 px-4 py-2.5 border-2 border-[#64748b] text-[#64748b] rounded-lg font-medium text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateWorkout}
+                    disabled={
+                      !newWorkoutName ||
+                      newWorkoutExercises.some((e) => !e.name)
+                    }
+                    className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white ${!newWorkoutName || newWorkoutExercises.some((e) => !e.name) ? "bg-gray-300 cursor-not-allowed" : "bg-[#d97706] hover:bg-[#b45309]"}`}
+                  >
+                    Create Workout
+                  </button>
                 </div>
               </div>
             )}
           </div>
         </div>
       )}
-
     </div>
   );
 }
 
 // Small helper component for the top stat grid
-function StatCard({ icon, label, value, goal, percentage, unit = '' }: { icon: any, label: string, value: number, goal: number, percentage: number, unit?: string }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  goal,
+  percentage,
+  unit = "",
+}: {
+  icon: any;
+  label: string;
+  value: number;
+  goal: number;
+  percentage: number;
+  unit?: string;
+}) {
   return (
     <div className="bg-white rounded-lg shadow-md p-3">
       <div className="flex items-center gap-1.5 mb-2">
@@ -790,10 +1651,15 @@ function StatCard({ icon, label, value, goal, percentage, unit = '' }: { icon: a
         <span className="text-xs text-[#64748b]">{label}</span>
       </div>
       <div className="text-lg font-bold text-[#1e293b] mb-1">
-        {value}{unit} / {goal}{unit}
+        {value}
+        {unit} / {goal}
+        {unit}
       </div>
       <div className="w-full bg-gray-200 rounded-full h-1.5">
-        <div className="bg-[#d97706] h-1.5 rounded-full transition-all duration-300" style={{ width: `${Math.min(percentage, 100)}%` }}></div>
+        <div
+          className="bg-[#d97706] h-1.5 rounded-full transition-all duration-300"
+          style={{ width: `${Math.min(percentage, 100)}%` }}
+        ></div>
       </div>
       <div className="text-xs text-[#64748b] mt-1">{percentage}%</div>
     </div>

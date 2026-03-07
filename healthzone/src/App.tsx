@@ -4,9 +4,11 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { WorkoutsPage } from "./pages/WorkoutsPage";
 import { RecipesPage } from "./pages/RecipesPage";
 import { CommunityPage } from "./pages/CommunityPage";
+import { CalendarPage } from "./pages/CalendarPage"; // <-- IMPORT ADDED HERE
 import { useEffect, useState } from "react";
 
-const LOGIN_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/jaspreet/#/login";
+const LOGIN_URL =
+  "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/healthzone/#/login";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
@@ -15,9 +17,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check if user has a session by calling the PHP backend
     // Updated to use your profile.php endpoint which confirms if user is logged in
-    fetch("https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php", {
-      credentials: "include",
-    })
+    fetch(
+      "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php",
+      {
+        credentials: "include",
+      },
+    )
       .then((res) => res.json())
       .then((data) => {
         // If the backend returns a success status, the session is valid
@@ -29,7 +34,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {
         // Fallback: strictly check for the existence of the PHP Session ID cookie
-        const hasCookie = document.cookie.split(";").some((c) => c.trim().startsWith("PHPSESSID="));
+        const hasCookie = document.cookie
+          .split(";")
+          .some((c) => c.trim().startsWith("PHPSESSID="));
         if (hasCookie) {
           setAuthenticated(true);
         } else {
@@ -65,6 +72,8 @@ export default function App() {
           <Route path="/workouts" element={<WorkoutsPage />} />
           <Route path="/recipes" element={<RecipesPage />} />
           <Route path="/community" element={<CommunityPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />{" "}
+          {/* <-- ROUTE ADDED HERE */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthGuard>
