@@ -4,7 +4,7 @@ import "../styles/auth.css";
 
 const API_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/signup.php";
 
-export default function Signup() {
+export default function SignupPage() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({

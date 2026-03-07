@@ -5,7 +5,7 @@ import "../styles/auth.css";
 const API_URL =
   "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/login.php";
 
-export default function Login() {
+export default function LoginPage() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");

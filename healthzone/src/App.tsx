@@ -5,11 +5,14 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { WorkoutsPage } from "./pages/WorkoutsPage";
 import { RecipesPage } from "./pages/RecipesPage";
 import { CommunityPage } from "./pages/CommunityPage";
-import { CalendarPage } from "./pages/CalendarPage"; // <-- IMPORT ADDED HERE
+import { CalendarPage } from "./pages/CalendarPage";
+import Login from "./pages/LoginPage";
+import Signup from "./pages/SignupPage";
+import { CreateRecipePage } from "./pages/CreateRecipePage";
+import { CreateWorkoutPage } from "./pages/CreateWorkoutPage";
+import { LogMealPage } from "./pages/LogMealPage";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
@@ -45,7 +48,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Use Navigate component instead of window.location.href to stay within HashRouter
   if (!authenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -76,6 +78,9 @@ export default function App() {
                 <Route path="/workouts" element={<WorkoutsPage />} />
                 <Route path="/recipes" element={<RecipesPage />} />
                 <Route path="/community" element={<CommunityPage />} />
+                <Route path="/create-recipe" element={<CreateRecipePage />} />
+                <Route path="/create-workout" element={<CreateWorkoutPage />} />
+                <Route path="/log-meal" element={<LogMealPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AuthGuard>
