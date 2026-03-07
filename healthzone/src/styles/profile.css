@@ -124,3 +124,121 @@
     margin-top: 15px;
     text-align: center;
 }
+
+/* Dark Theme Mobile Profile */
+.mobile-profile-container {
+    max-width: 480px;
+    margin: 0 auto;
+    background: #212b36; /* Dark blue background from image */
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: white; /* General text color */
+}
+
+.mobile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #212b36; /* Match background */
+    border-bottom: 1px solid #374151;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.mobile-header h1 { font-size: 1.1rem; margin: 0; font-weight: 600; color: white; }
+.back-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #d9822b; }
+
+/* Avatar Section */
+.mobile-avatar-section {
+    text-align: center;
+    padding: 30px 0;
+    background: #212b36;
+}
+
+.avatar-wrapper {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #d9822b;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.profile-avatar { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+    background-color: #d9822b; 
+}
+
+/* Form Styling */
+.mobile-form { padding: 20px; }
+
+.form-group { margin-bottom: 20px; }
+.form-group label {
+    display: block;
+    font-size: 0.75rem;
+    color: #b0b0b0; /* Muted label color */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.mobile-form input {
+    width: 100%;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 25px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    background-color: #d9d9d9;
+    color: #333;
+}
+
+/* Read-only / Locked fields */
+.input-locked { 
+    background-color: #5f6d7e !important; 
+    color: #d9d9d9 !important; 
+    cursor: not-allowed; 
+}
+
+hr { border: 0; border-top: 1px solid #374151; margin: 25px 0; }
+
+/* Messages */
+.status-msg { text-align: center; font-size: 0.9rem; margin: 10px 0; padding: 10px; border-radius: 10px; }
+.status-msg.ok { background: rgba(212, 237, 218, 0.1); color: #28a745; border: 1px solid #28a745; }
+.status-msg.err { background: rgba(248, 215, 218, 0.1); color: #f87171; border: 1px solid #f87171; }
+
+/* Buttons to match image */
+.mobile-save-btn {
+    width: 100%;
+    padding: 15px;
+    background: #d9822b;
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-top: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.mobile-home-btn {
+    width: 100%;
+    padding: 15px;
+    background: #5f6d7e;
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-top: 12px;
+    cursor: pointer;
+}
+
+.mobile-save-btn:active, .mobile-home-btn:active { transform: scale(0.98); opacity: 0.9; }
