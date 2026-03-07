@@ -21,7 +21,6 @@ if (empty($email) || empty($username) || empty($password)) {
     echo json_encode(["status" => "error", "message" => "All fields are required"]);
     exit;
 }
-
 if ($password !== $confirmPassword) {
     echo json_encode(["status" => "error", "message" => "Passwords do not match"]);
     exit;
