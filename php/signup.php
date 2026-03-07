@@ -15,9 +15,14 @@ $data = json_decode(file_get_contents("php://input"), true);
 $email    = $data['email'] ?? '';
 $username = $data['username'] ?? '';
 $password = $data['password'] ?? '';
+$confirmPassword = $data['confirmPassword'] ?? '';
 
 if (empty($email) || empty($username) || empty($password)) {
     echo json_encode(["status" => "error", "message" => "All fields are required"]);
+    exit;
+}
+if ($password !== $confirmPassword) {
+    echo json_encode(["status" => "error", "message" => "Passwords do not match"]);
     exit;
 }
 
