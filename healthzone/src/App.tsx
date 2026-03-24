@@ -13,6 +13,7 @@ import { CreateWorkoutPage } from "./pages/CreateWorkoutPage";
 import { LogMealPage } from "./pages/LogMealPage";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
+import { SleepPage } from "./pages/SleepPage";
 
 const API_BASE = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php";
 
@@ -83,6 +84,7 @@ export default function App() {
                 <Route path="/create-recipe" element={<CreateRecipePage />} />
                 <Route path="/create-workout" element={<CreateWorkoutPage />} />
                 <Route path="/log-meal" element={<LogMealPage />} />
+                <Route path="/sleep" element={<SleepPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AuthGuard>

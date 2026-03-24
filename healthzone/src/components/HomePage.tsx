@@ -20,9 +20,10 @@ export function HomePage() {
   const [selectedTrainer, setSelectedTrainer] = useState<any>(null);
 
   // =========================================================================
-  // NUTRITION STATS (TODAY) — fetched from backend
+  // NUTRITION & SLEEP STATS (TODAY) — fetched from backend
   // =========================================================================
   const NUTRITION_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/nutrition_today.php";
+  const SLEEP_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/sleep.php";
 
   type NutritionToday = {
     goals: { calories: number; protein: number; carbs: number; fat: number };
@@ -32,6 +33,7 @@ export function HomePage() {
 
   const [nutrition, setNutrition] = useState<NutritionToday | null>(null);
   const [nutritionLoading, setNutritionLoading] = useState(true);
+  const [latestSleep, setLatestSleep] = useState<number>(0);
 
   // =========================================================================
   // MEAL STATE — fetched from backend, no local modal needed
@@ -69,6 +71,16 @@ export function HomePage() {
         }
       })
       .catch(() => {});
+
+    // Fetch Latest Sleep Log
+    fetch(`${SLEEP_URL}?action=get_latest`, { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && typeof data.hours === 'number') {
+          setLatestSleep(data.hours);
+        }
+      })
+      .catch(() => console.error("Could not load sleep data"));
   }, []);
 
   // Post the completed workout to the Database API
@@ -170,15 +182,23 @@ export function HomePage() {
             <div className="text-sm font-bold text-[#d97706] mb-1">View All →</div>
             <div className="text-[10px] sm:text-xs text-[#64748b]">Track & log workouts</div>
           </button>
-          {/* Sleep tracking — coming soon */}
-          <div className="bg-white rounded-lg shadow-md p-2.5 sm:p-3 opacity-60">
+          
+          {/* Functional Sleep tracking widget */}
+          <button 
+            onClick={() => navigate('/sleep')}
+            className="bg-white rounded-lg shadow-md p-2.5 sm:p-3 text-left hover:shadow-lg hover:border-[#d97706] border border-transparent transition-all cursor-pointer flex flex-col justify-between"
+          >
             <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
               <Moon className="size-5 text-[#d97706]" />
               <span className="text-[10px] sm:text-xs text-[#64748b]">Sleep</span>
             </div>
-            <div className="text-sm sm:text-lg font-bold text-[#1e293b] mb-1">Coming Soon</div>
-            <div className="text-[10px] sm:text-xs text-[#64748b]">Sleep tracking</div>
-          </div>
+            <div className="text-sm sm:text-lg font-bold text-[#1e293b] mb-1">
+              {latestSleep > 0 ? `${latestSleep.toFixed(1)} hrs` : "Log now"}
+            </div>
+            <div className="text-[10px] sm:text-xs text-[#64748b]">
+              {latestSleep > 0 ? "Logged today" : "No data"}
+            </div>
+          </button>
         </div>
 
         {/* Quick Actions */}
@@ -199,9 +219,10 @@ export function HomePage() {
               <UtensilsCrossed className="size-6" />
               <span className="text-xs font-medium">Log Meal</span>
             </button>
-            <button onClick={() => navigate('/create-recipe')} className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
-              <BookOpen className="size-6" />
-              <span className="text-xs font-medium">Create Recipe</span>
+            {/* Replaced Create Recipe with Log Sleep for Quick Actions */}
+            <button onClick={() => navigate('/sleep')} className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+              <Moon className="size-6 text-[#d97706]" />
+              <span className="text-xs font-medium">Log Sleep</span>
             </button>
           </div>
         </div>
