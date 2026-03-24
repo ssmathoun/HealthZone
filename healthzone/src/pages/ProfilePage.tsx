@@ -8,10 +8,9 @@ export const ProfilePage = () => {
         avatar: ''
     });
 
-    const [passwords, setPasswords] = useState({
-        oldPassword: '',
-        newPassword: '',
-        confirmNewPassword: ''
+    const [editedUser, setEditedUser] = useState({
+        username: '',
+        email: ''
     });
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -28,6 +27,10 @@ export const ProfilePage = () => {
                 const data = await response.json();
                 if (data.status === 'success') {
                     setUser(data.user);
+                    setEditedUser({
+                        username: data.user.username,
+                        email: data.user.email
+                    });
                     setPreviewUrl(`https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${data.user.avatar}`);
                 }
             } catch (err) {
@@ -47,36 +50,34 @@ export const ProfilePage = () => {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        setMessage('Saving...'); 
-
-        if ((passwords.newPassword || passwords.confirmNewPassword) && !passwords.oldPassword) {
-            setMessage("Error: Current password is required to set a new one.");
-            return;
-        }
-
-        if (passwords.newPassword !== passwords.confirmNewPassword) {
-            setMessage("Error: New passwords do not match.");
-            return;
-        }
+        setMessage('Saving...');
 
         const formData = new FormData();
         if (selectedFile) formData.append('avatar', selectedFile);
-        if (passwords.oldPassword) formData.append('oldPassword', passwords.oldPassword);
-        if (passwords.newPassword) formData.append('newPassword', passwords.newPassword);
-        if (passwords.confirmNewPassword) formData.append('confirmNewPassword', passwords.confirmNewPassword);
+        if (editedUser.username !== user.username) formData.append('username', editedUser.username);
+        if (editedUser.email !== user.email) formData.append('email', editedUser.email);
+
+        // Check if there are any changes
+        if (!selectedFile && editedUser.username === user.username && editedUser.email === user.email) {
+            setMessage('No changes made.');
+            return;
+        }
 
         try {
             const response = await fetch(API_BASE, {
                 method: 'POST',
                 body: formData,
-                credentials: 'include' 
+                credentials: 'include'
             });
             const result = await response.json();
-            
+
             if (result.status === 'success') {
                 setMessage(result.message);
-                setPasswords({ oldPassword: '', newPassword: '', confirmNewPassword: '' });
-                
+                setUser({
+                    ...user,
+                    username: editedUser.username,
+                    email: editedUser.email
+                });
                 if (result.avatar_url) {
                     setPreviewUrl(`https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${result.avatar_url}`);
                 }
@@ -99,22 +100,10 @@ export const ProfilePage = () => {
 
                 <form onSubmit={handleSave} className="profile-form">
                     <label className="profile-label">Username</label>
-                    <input className="profile-input profile-input-readonly" value={user.username} readOnly />
+                    <input className="profile-input" value={editedUser.username} onChange={(e) => setEditedUser({...editedUser, username: e.target.value})} />
 
                     <label className="profile-label">Email</label>
-                    <input className="profile-input profile-input-readonly" value={user.email} readOnly />
-
-                    <label className="profile-label">Current Password</label>
-                    <input type="password" className="profile-input" value={passwords.oldPassword} 
-                        onChange={(e) => setPasswords({...passwords, oldPassword: e.target.value})} placeholder="••••••••" />
-
-                    <label className="profile-label">New Password</label>
-                    <input type="password" className="profile-input" value={passwords.newPassword} 
-                        onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})} placeholder="••••••••" />
-
-                    <label className="profile-label">Confirm New Password</label>
-                    <input type="password" className="profile-input" value={passwords.confirmNewPassword} 
-                        onChange={(e) => setPasswords({...passwords, confirmNewPassword: e.target.value})} placeholder="••••••••" />
+                    <input className="profile-input" type="email" value={editedUser.email} onChange={(e) => setEditedUser({...editedUser, email: e.target.value})} />
 
                     {message && <p className="status-message">{message}</p>}
 

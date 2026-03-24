@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Activity, Heart, Dumbbell, Moon, Plus, UtensilsCrossed, LogOut, User,
+  Activity, Heart, Dumbbell, Moon, Plus, UtensilsCrossed, LogOut, User, Settings,
   BookOpen, Users, Trophy, Calendar, ArrowLeft, X, Flame, MessageCircle, MapPin, Star
 } from 'lucide-react';
 
@@ -135,6 +135,9 @@ export function HomePage() {
           <div className="flex items-center gap-1">
             <button className="text-white p-2 hover:bg-white/10 rounded-full" onClick={() => navigate('/profile')}>
               <User className="size-5" />
+            </button>
+            <button className="text-white p-2 hover:bg-white/10 rounded-full" onClick={() => navigate('/settings')}>
+              <Settings className="size-5" />
             </button>
             <button className="text-white p-2 hover:bg-white/10 rounded-full" onClick={() => {
               fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/logout.php', { method: 'POST', credentials: 'include' })
