@@ -8,10 +8,9 @@ export const ProfilePageMobile = () => {
         avatar: ''
     });
 
-    const [passwords, setPasswords] = useState({
-        oldPassword: '',
-        newPassword: '',
-        confirmNewPassword: ''
+    const [editedUser, setEditedUser] = useState({
+        username: '',
+        email: ''
     });
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -29,8 +28,12 @@ export const ProfilePageMobile = () => {
                 const data = await response.json();
                 if (data.status === 'success') {
                     setUser(data.user);
-                    const avatarPath = data.user.avatar 
-                        ? `https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${data.user.avatar}` 
+                    setEditedUser({
+                        username: data.user.username,
+                        email: data.user.email
+                    });
+                    const avatarPath = data.user.avatar
+                        ? `https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${data.user.avatar}`
                         : 'default_avatar.png';
                     setPreviewUrl(avatarPath);
                 }
@@ -55,39 +58,34 @@ export const ProfilePageMobile = () => {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        setMessage('Saving...'); 
-
-        // 1. Check if current password is provided when attempting to change password
-        if ((passwords.newPassword || passwords.confirmNewPassword) && !passwords.oldPassword) {
-            setMessage("Error: Current password required to set a new one.");
-            return;
-        }
-
-        // 2. Strict Frontend Validation (Trimming to avoid mobile keyboard space issues)
-        if (passwords.newPassword.trim() !== passwords.confirmNewPassword.trim()) {
-            setMessage("Error: New passwords do not match.");
-            return;
-        }
+        setMessage('Saving...');
 
         const formData = new FormData();
         if (selectedFile) formData.append('avatar', selectedFile);
-        if (passwords.oldPassword) formData.append('oldPassword', passwords.oldPassword);
-        if (passwords.newPassword) formData.append('newPassword', passwords.newPassword);
-        // 3. Append confirmNewPassword so the PHP backend can also verify
-        if (passwords.confirmNewPassword) formData.append('confirmNewPassword', passwords.confirmNewPassword);
+        if (editedUser.username !== user.username) formData.append('username', editedUser.username);
+        if (editedUser.email !== user.email) formData.append('email', editedUser.email);
+
+        // Check if there are any changes
+        if (!selectedFile && editedUser.username === user.username && editedUser.email === user.email) {
+            setMessage('No changes made.');
+            return;
+        }
 
         try {
             const response = await fetch(API_BASE, {
                 method: 'POST',
                 body: formData,
-                credentials: 'include' 
+                credentials: 'include'
             });
             const result = await response.json();
-            
+
             if (result.status === 'success') {
                 setMessage(result.message);
-                // Clear password fields on success
-                setPasswords({ oldPassword: '', newPassword: '', confirmNewPassword: '' });
+                setUser({
+                    ...user,
+                    username: editedUser.username,
+                    email: editedUser.email
+                });
                 if (result.avatar_url) {
                     setPreviewUrl(`https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${result.avatar_url}`);
                 }
@@ -131,44 +129,12 @@ export const ProfilePageMobile = () => {
             <form onSubmit={handleSave} className="mobile-form">
                 <section className="form-group">
                     <label>Username</label>
-                    <input className="input-locked" value={user.username} readOnly />
+                    <input value={editedUser.username} onChange={(e) => setEditedUser({...editedUser, username: e.target.value})} />
                 </section>
 
                 <section className="form-group">
                     <label>Email</label>
-                    <input className="input-locked" value={user.email} readOnly />
-                </section>
-
-                <hr />
-
-                <section className="form-group">
-                    <label>Current Password</label>
-                    <input 
-                        type="password" 
-                        value={passwords.oldPassword} 
-                        onChange={(e) => setPasswords({...passwords, oldPassword: e.target.value})} 
-                        placeholder="••••••••" 
-                    />
-                </section>
-
-                <section className="form-group">
-                    <label>New Password</label>
-                    <input 
-                        type="password" 
-                        value={passwords.newPassword} 
-                        onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})} 
-                        placeholder="••••••••" 
-                    />
-                </section>
-
-                <section className="form-group">
-                    <label>Confirm New Password</label>
-                    <input 
-                        type="password" 
-                        value={passwords.confirmNewPassword} 
-                        onChange={(e) => setPasswords({...passwords, confirmNewPassword: e.target.value})} 
-                        placeholder="••••••••" 
-                    />
+                    <input type="email" value={editedUser.email} onChange={(e) => setEditedUser({...editedUser, email: e.target.value})} />
                 </section>
 
                 {message && (
