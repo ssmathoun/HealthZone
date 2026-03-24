@@ -25,3 +25,4 @@ Thumbs.db
 *.sw?
 *.sql
 *.log
+node_modules
