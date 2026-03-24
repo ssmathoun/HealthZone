@@ -6,6 +6,7 @@ import { WorkoutsPage } from "./pages/WorkoutsPage";
 import { RecipesPage } from "./pages/RecipesPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { CommunityPage } from "./pages/CommunityPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 export const router = createBrowserRouter(
   [
@@ -36,6 +37,10 @@ export const router = createBrowserRouter(
     {
       path: "/community",
       Component: CommunityPage,
+    },
+    {
+      path: "/settings",
+      Component: SettingsPage,
     },
   ],
   {

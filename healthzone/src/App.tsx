@@ -11,6 +11,7 @@ import Signup from "./pages/SignupPage";
 import { CreateRecipePage } from "./pages/CreateRecipePage";
 import { CreateWorkoutPage } from "./pages/CreateWorkoutPage";
 import { LogMealPage } from "./pages/LogMealPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
 
@@ -83,6 +84,7 @@ export default function App() {
                 <Route path="/create-recipe" element={<CreateRecipePage />} />
                 <Route path="/create-workout" element={<CreateWorkoutPage />} />
                 <Route path="/log-meal" element={<LogMealPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AuthGuard>
