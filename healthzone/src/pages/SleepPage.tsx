@@ -89,7 +89,7 @@ export function SleepPage() {
   // Prepare data for the Bar Chart
   const chartData = history.slice().reverse().map(log => ({
     date: new Date(log.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric' }),
-    hours: Number(log.hours.toFixed(1))
+    hours: Number(Number(log.hours).toFixed(1))
   }));
 
   const chartConfig = {
@@ -219,7 +219,7 @@ export function SleepPage() {
                     </span>
                   </div>
                   <span className="text-sm font-bold text-[#d97706] bg-[#d97706]/10 px-2 py-1 rounded-md">
-                    {log.hours.toFixed(1)} hrs
+                    {Number(log.hours).toFixed(1)} hrs
                   </span>
                 </div>
               ))
