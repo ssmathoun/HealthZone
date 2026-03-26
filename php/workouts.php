@@ -1,5 +1,6 @@
 <?php
 require "autoload.php";
+require_once "challenges_support.php";
 
 // Set up dynamic CORS to support credentials (sessions) from the React frontend
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
@@ -122,13 +123,21 @@ try {
             exit;
         }
 
+        // Ensure challenge tables exist before opening the workout transaction.
+        ensure_challenges_tables($connection);
+
+        $connection->beginTransaction();
+
         // Store the record that this user completed this template
         $query = "INSERT INTO user_workout_logs (user_id, workout_id) VALUES (:user_id, :workout_id)";
         $stm = $connection->prepare($query);
         
         if ($stm->execute(['user_id' => $current_user_id, 'workout_id' => $workout_id])) {
+            increment_workout_challenge_progress($connection, (int) $current_user_id);
+            $connection->commit();
             echo json_encode(["status" => "success", "message" => "Workout logged successfully!"]);
         } else {
+            $connection->rollBack();
             echo json_encode(["status" => "error", "message" => "Failed to log workout."]);
         }
         exit;
