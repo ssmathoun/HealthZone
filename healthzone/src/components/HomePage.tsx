@@ -1,8 +1,8 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   Activity, Heart, Dumbbell, Moon, Plus, UtensilsCrossed, LogOut, User, Settings,
-  BookOpen, Trophy, Calendar, ArrowLeft, X, Flame, MapPin, Star
+  BookOpen, Users, Trophy, Calendar, ArrowLeft, X, Flame, MessageCircle, MapPin, Star, Scale
 } from 'lucide-react';
 
 const CHALLENGES_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/challenges.php";
@@ -137,27 +137,8 @@ export function HomePage() {
   // =========================================================================
   // MEAL STATE — fetched from backend, no local modal needed
   // =========================================================================
-  const [loggedMeals, setLoggedMeals] = useState<Meal[]>([]);
-  const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
-  const [availableChallenges, setAvailableChallenges] = useState<Challenge[]>([]);
-  const [challengesLoading, setChallengesLoading] = useState(true);
-  const [joiningChallengeId, setJoiningChallengeId] = useState<number | null>(null);
-
-  const refreshChallenges = async () => {
-    setChallengesLoading(true);
-
-    try {
-      const challengeData = await fetchChallengeDashboardData();
-      setActiveChallenges(challengeData.activeChallenges);
-      setAvailableChallenges(challengeData.availableChallenges);
-    } catch (error) {
-      console.error("Error fetching challenges:", error);
-      setActiveChallenges([]);
-      setAvailableChallenges([]);
-    } finally {
-      setChallengesLoading(false);
-    }
-  };
+  const [loggedMeals, setLoggedMeals] = useState<any[]>([]);
+  const [latestWeight, setLatestWeight] = useState<number | null>(null);
 
   // Fetch Workouts from your actual Database API
   useEffect(() => {
@@ -192,31 +173,15 @@ export function HomePage() {
       })
       .catch(() => {});
 
-    fetchChallengeDashboardData()
-      .then((challengeData) => {
-        if (cancelled) {
-          return;
-        }
-
-        setActiveChallenges(challengeData.activeChallenges);
-        setAvailableChallenges(challengeData.availableChallenges);
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.error("Error fetching challenges:", error);
-          setActiveChallenges([]);
-          setAvailableChallenges([]);
+    // Fetch latest weight entry
+    fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/weight_tracker.php?days=3650', { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === 'success' && Array.isArray(data.logs) && data.logs.length > 0) {
+          setLatestWeight(data.logs[data.logs.length - 1].weight_lbs);
         }
       })
-      .finally(() => {
-        if (!cancelled) {
-          setChallengesLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
+      .catch(() => {});
   }, []);
 
   // Post the completed workout to the Database API
@@ -347,6 +312,27 @@ export function HomePage() {
             <div className="text-sm font-bold text-[#d97706] mb-1">View All →</div>
             <div className="text-[10px] sm:text-xs text-[#64748b]">Track & log workouts</div>
           </button>
+          {/* Weight Tracker card */}
+          <button
+            onClick={() => navigate('/weight-tracker')}
+            className="bg-white rounded-lg shadow-md p-2.5 sm:p-3 text-left hover:shadow-lg hover:border-[#d97706] border border-transparent transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
+              <Scale className="size-5 text-[#d97706]" />
+              <span className="text-[10px] sm:text-xs text-[#64748b]">Weight</span>
+            </div>
+            {latestWeight !== null ? (
+              <>
+                <div className="text-sm font-bold text-[#1e293b] mb-1">{latestWeight} lbs</div>
+                <div className="text-[10px] sm:text-xs text-[#64748b]">Tap to track →</div>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-bold text-[#d97706] mb-1">Log weight →</div>
+                <div className="text-[10px] sm:text-xs text-[#64748b]">No entries yet</div>
+              </>
+            )}
+          </button>
           {/* Sleep tracking — coming soon */}
           <div className="bg-white rounded-lg shadow-md p-2.5 sm:p-3 opacity-60">
             <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
@@ -361,7 +347,7 @@ export function HomePage() {
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-4">
           <h2 className="text-base font-semibold text-[#1e293b] mb-3">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {/* LOG WORKOUT BUTTON */}
             <button onClick={() => setShowWorkoutModal(true)} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
               <Dumbbell className="size-6" />
@@ -371,6 +357,11 @@ export function HomePage() {
             <button onClick={() => navigate('/create-workout')} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
               <Plus className="size-6" />
               <span className="text-xs font-medium">Create Workout</span>
+            </button>
+            {/* WEIGHT TRACKER BUTTON */}
+            <button onClick={() => navigate('/weight-tracker')} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+              <Scale className="size-6" />
+              <span className="text-xs font-medium">Track Weight</span>
             </button>
             <button onClick={() => navigate('/log-meal')} className="bg-[#1e293b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
               <UtensilsCrossed className="size-6" />
