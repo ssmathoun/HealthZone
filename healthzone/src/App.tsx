@@ -13,6 +13,7 @@ import { CreateWorkoutPage } from "./pages/CreateWorkoutPage";
 import { LogMealPage } from "./pages/LogMealPage";
 import { SleepPage } from "./pages/SleepPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { WeightTrackerPage } from "./pages/WeightTrackerPage";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
 
