@@ -33,6 +33,10 @@ export function HomePage() {
   const [nutrition, setNutrition] = useState<NutritionToday | null>(null);
   const [nutritionLoading, setNutritionLoading] = useState(true);
 
+  // Sleep tracking
+  const SLEEP_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/sleep.php";
+  const [latestSleep, setLatestSleep] = useState<number>(0);
+
   // =========================================================================
   // MEAL STATE — fetched from backend, no local modal needed
   // =========================================================================
@@ -66,6 +70,16 @@ export function HomePage() {
       .then((data) => {
         if (Array.isArray(data)) {
           setLoggedMeals(data);
+        }
+      })
+      .catch(() => {});
+
+    // Fetch latest sleep log
+    fetch(`${SLEEP_URL}?action=get_history`, { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setLatestSleep(Number(data[0].hours));
         }
       })
       .catch(() => {});
@@ -173,27 +187,32 @@ export function HomePage() {
             <div className="text-sm font-bold text-[#d97706] mb-1">View All →</div>
             <div className="text-[10px] sm:text-xs text-[#64748b]">Track & log workouts</div>
           </button>
-          {/* Sleep tracking — coming soon */}
-          <div className="bg-white rounded-lg shadow-md p-2.5 sm:p-3 opacity-60">
+          {/* Functional Sleep tracking widget */}
+          <button 
+            onClick={() => navigate('/sleep')}
+            className="bg-white rounded-lg shadow-md p-2.5 sm:p-3 text-left hover:shadow-lg hover:border-[#d97706] border border-transparent transition-all cursor-pointer"
+          >
             <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
               <Moon className="size-5 text-[#d97706]" />
               <span className="text-[10px] sm:text-xs text-[#64748b]">Sleep</span>
             </div>
-            <div className="text-sm sm:text-lg font-bold text-[#1e293b] mb-1">Coming Soon</div>
-            <div className="text-[10px] sm:text-xs text-[#64748b]">Sleep tracking</div>
-          </div>
+            <div className="text-sm sm:text-lg font-bold text-[#1e293b] mb-1">
+              {latestSleep > 0 ? `${latestSleep.toFixed(1)} hrs` : "Log now"}
+            </div>
+            <div className="text-[10px] sm:text-xs text-[#64748b]">
+              {latestSleep > 0 ? "Logged today" : "No data"}
+            </div>
+          </button>
         </div>
 
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-4">
           <h2 className="text-base font-semibold text-[#1e293b] mb-3">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {/* LOG WORKOUT BUTTON */}
-            <button onClick={() => setShowWorkoutModal(true)} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+          <div className="grid grid-cols-3 gap-3">
+            <button onClick={() => navigate('/log-workout')} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
               <Dumbbell className="size-6" />
               <span className="text-xs font-medium">Log Workout</span>
             </button>
-            {/* CREATE WORKOUT BUTTON */}
             <button onClick={() => navigate('/create-workout')} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
               <Plus className="size-6" />
               <span className="text-xs font-medium">Create Workout</span>
@@ -205,6 +224,14 @@ export function HomePage() {
             <button onClick={() => navigate('/create-recipe')} className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
               <BookOpen className="size-6" />
               <span className="text-xs font-medium">Create Recipe</span>
+            </button>
+            <button onClick={() => navigate('/calendar')} className="bg-[#1e293b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+              <Calendar className="size-6" />
+              <span className="text-xs font-medium">Calendar</span>
+            </button>
+            <button onClick={() => navigate('/forum')} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+              <MessageCircle className="size-6" />
+              <span className="text-xs font-medium">Forum</span>
             </button>
           </div>
         </div>

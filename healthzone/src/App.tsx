@@ -11,18 +11,17 @@ import Signup from "./pages/SignupPage";
 import { CreateRecipePage } from "./pages/CreateRecipePage";
 import { CreateWorkoutPage } from "./pages/CreateWorkoutPage";
 import { LogMealPage } from "./pages/LogMealPage";
+import { SleepPage } from "./pages/SleepPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
-
-const API_BASE = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/profile.php`, {
+    fetch("https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php", {
       credentials: "include",
     })
       .then((res) => res.json())
@@ -81,10 +80,14 @@ export default function App() {
                 <Route path="/workouts" element={<WorkoutsPage />} />
                 <Route path="/recipes" element={<RecipesPage />} />
                 <Route path="/community" element={<CommunityPage />} />
+                <Route path="/forum" element={<CommunityPage />} />
                 <Route path="/create-recipe" element={<CreateRecipePage />} />
                 <Route path="/create-workout" element={<CreateWorkoutPage />} />
                 <Route path="/log-meal" element={<LogMealPage />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/sleep" element={<SleepPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/log-workout" element={<WorkoutsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AuthGuard>
