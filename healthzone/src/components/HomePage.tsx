@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity, Heart, Dumbbell, Moon, Plus, UtensilsCrossed, LogOut, User, Settings,
-  BookOpen, Users, Trophy, Calendar, ArrowLeft, X, Flame, MessageCircle, MapPin, Star, Scale
+  BookOpen, Trophy, Calendar, ArrowLeft, X, Flame, MessageCircle, MapPin, Star, Scale
 } from 'lucide-react';
 
 const CHALLENGES_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/challenges.php";
@@ -63,6 +63,10 @@ type Meal = {
   meal_type?: string;
   type?: string;
 };
+
+function toMealNumber(value: string | number | undefined): number {
+  return Number(value) || 0;
+}
 
 async function fetchChallengeList(action: string): Promise<Challenge[]> {
   const response = await fetch(`${CHALLENGES_URL}?action=${action}`, { credentials: 'include' });
@@ -141,8 +145,27 @@ export function HomePage() {
   // =========================================================================
   // MEAL STATE — fetched from backend, no local modal needed
   // =========================================================================
-  const [loggedMeals, setLoggedMeals] = useState<any[]>([]);
-  const [latestWeight, setLatestWeight] = useState<number | null>(null);
+  const [loggedMeals, setLoggedMeals] = useState<Meal[]>([]);
+  const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
+  const [availableChallenges, setAvailableChallenges] = useState<Challenge[]>([]);
+  const [challengesLoading, setChallengesLoading] = useState(true);
+  const [joiningChallengeId, setJoiningChallengeId] = useState<number | null>(null);
+
+  const refreshChallenges = async () => {
+    setChallengesLoading(true);
+
+    try {
+      const challengeData = await fetchChallengeDashboardData();
+      setActiveChallenges(challengeData.activeChallenges);
+      setAvailableChallenges(challengeData.availableChallenges);
+    } catch (error) {
+      console.error("Error fetching challenges:", error);
+      setActiveChallenges([]);
+      setAvailableChallenges([]);
+    } finally {
+      setChallengesLoading(false);
+    }
+  };
 
   // Fetch Workouts from your actual Database API
   useEffect(() => {
@@ -181,11 +204,17 @@ export function HomePage() {
     fetch(`${SLEEP_URL}?action=get_history`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (!cancelled && Array.isArray(data) && data.length > 0) {
           setLatestSleep(Number(data[0].hours));
         }
       })
       .catch(() => {});
+
+    void refreshChallenges();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Post the completed workout to the Database API
@@ -261,9 +290,9 @@ export function HomePage() {
     proteinsConsumed: nutrition.consumed.protein,
     proteinsGoal: nutrition.goals.protein,
   } : {
-    caloriesConsumed: loggedMeals.reduce((s, m) => s + (parseInt(m.calories) || 0), 0),
+    caloriesConsumed: loggedMeals.reduce((s, m) => s + toMealNumber(m.calories), 0),
     caloriesGoal: 2400,
-    proteinsConsumed: loggedMeals.reduce((s, m) => s + (parseInt(m.protein) || 0), 0),
+    proteinsConsumed: loggedMeals.reduce((s, m) => s + toMealNumber(m.protein), 0),
     proteinsGoal: 180,
   };
 
@@ -364,7 +393,7 @@ export function HomePage() {
               <Calendar className="size-6" />
               <span className="text-xs font-medium">Calendar</span>
             </button>
-            <button onClick={() => navigate('/forum')} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+            <button onClick={() => navigate('/community')} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
               <MessageCircle className="size-6" />
               <span className="text-xs font-medium">Forum</span>
             </button>
@@ -397,7 +426,7 @@ export function HomePage() {
               ))}
               <div className="flex items-center justify-between pt-2 border-t border-gray-200 mt-2">
                 <span className="text-sm font-medium text-[#1e293b]">Total</span>
-                <span className="text-sm font-bold text-[#d97706]">{loggedMeals.reduce((s, m) => s + (parseInt(m.calories) || 0), 0)} cal</span>
+                <span className="text-sm font-bold text-[#d97706]">{loggedMeals.reduce((s, m) => s + toMealNumber(m.calories), 0)} cal</span>
               </div>
             </div>
           )}
