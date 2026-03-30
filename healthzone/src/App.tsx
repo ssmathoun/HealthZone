@@ -14,15 +14,18 @@ import { LogMealPage } from "./pages/LogMealPage";
 import { SleepPage } from "./pages/SleepPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { WeightTrackerPage } from "./pages/WeightTrackerPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
+
+const API_BASE = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    fetch("https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php", {
+    fetch(`${API_BASE}/profile.php`, {
       credentials: "include",
     })
       .then((res) => res.json())
@@ -60,7 +63,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const isMobile = useIsMobile();
-  
+
   return (
     <HashRouter>
       <Routes>
@@ -74,21 +77,23 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
-                <Route 
-                  path="/profile" 
-                  element={isMobile ? <ProfilePageMobile /> : <ProfilePage />} 
+                <Route
+                  path="/profile"
+                  element={isMobile ? <ProfilePageMobile /> : <ProfilePage />}
                 />
                 <Route path="/workouts" element={<WorkoutsPage />} />
+                <Route path="/log-workout" element={<WorkoutsPage />} />
                 <Route path="/recipes" element={<RecipesPage />} />
                 <Route path="/community" element={<CommunityPage />} />
                 <Route path="/forum" element={<CommunityPage />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/sleep" element={<SleepPage />} />
                 <Route path="/create-recipe" element={<CreateRecipePage />} />
                 <Route path="/create-workout" element={<CreateWorkoutPage />} />
                 <Route path="/log-meal" element={<LogMealPage />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/sleep" element={<SleepPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/log-workout" element={<WorkoutsPage />} />
+                <Route path="/weight-tracker" element={<WeightTrackerPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AuthGuard>
