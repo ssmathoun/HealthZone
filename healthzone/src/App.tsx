@@ -25,9 +25,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    fetch("https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php", {
-      credentials: "include",
-    })
+    fetch(
+      "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php",
+      {
+        credentials: "include",
+      },
+    )
       .then((res) => res.json())
       .then((data) => {
         if (data.status === "success") {
@@ -37,7 +40,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {
-        const hasCookie = document.cookie.split(";").some((c) => c.trim().startsWith("PHPSESSID="));
+        const hasCookie = document.cookie
+          .split(";")
+          .some((c) => c.trim().startsWith("PHPSESSID="));
         setAuthenticated(hasCookie);
       })
       .finally(() => setChecking(false));
@@ -63,7 +68,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const isMobile = useIsMobile();
-  
+
   return (
     <HashRouter>
       <Routes>
