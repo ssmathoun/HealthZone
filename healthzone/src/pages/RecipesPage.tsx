@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UtensilsCrossed, Plus, Search, Clock, Flame, ArrowLeft, X, Heart } from 'lucide-react';
+import { UtensilsCrossed, Plus, Search, Clock, Flame, ArrowLeft, X, Heart, Copy } from 'lucide-react';
 
 const allRecipes = [
   { id: 1, name: 'High-Protein Buddha Bowl', calories: 480, protein: 42, carbs: 45, fat: 16, prepTime: '15 min', image: 'https://images.unsplash.com/photo-1752028935881-0674807b046c?w=400&h=300&fit=crop', category: 'Lunch', ingredients: ['Quinoa', 'Chickpeas', 'Avocado', 'Mixed greens', 'Tahini dressing'] },
@@ -23,7 +23,17 @@ export function RecipesPage() {
   const [recipeCreated, setRecipeCreated] = useState(false);
 
   const categories = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snacks', 'High-Protein'];
-  const recipes = [...allRecipes, ...userRecipes];
+  const recipes = [...userRecipes, ...allRecipes]; // Show user recipes first
+
+  useEffect(() => {
+    // Fetch user's recipes from the database
+    fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/recipes.php?action=get_recipes', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setUserRecipes(data);
+      })
+      .catch(() => console.error("Could not fetch user recipes"));
+  }, []);
 
   const filtered = recipes.filter(r => {
     const matchesFilter = activeFilter === 'All' || r.category === activeFilter || (activeFilter === 'High-Protein' && r.protein >= 35);
@@ -31,19 +41,66 @@ export function RecipesPage() {
     return matchesFilter && matchesSearch;
   });
 
-  const handleCreateRecipe = () => {
+  const handleCreateRecipe = async () => {
     if (!newRecipe.name) return;
-    setUserRecipes(prev => [...prev, {
-      id: Date.now(), name: newRecipe.name, category: newRecipe.category,
-      calories: parseInt(newRecipe.calories) || 0, protein: parseInt(newRecipe.protein) || 0,
-      carbs: 0, fat: 0, prepTime: newRecipe.prepTime || '15 min',
+
+    const recipeData = {
+      name: newRecipe.name, 
+      category: newRecipe.category,
+      calories: parseInt(newRecipe.calories) || 0, 
+      protein: parseInt(newRecipe.protein) || 0,
+      carbs: 0, 
+      fat: 0, 
+      prepTime: newRecipe.prepTime || '15 min',
       image: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=400&h=300&fit=crop',
       ingredients: newRecipe.ingredients.split(',').map((i: string) => i.trim()).filter(Boolean),
-    }]);
+    };
+
+    try {
+      const res = await fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/recipes.php?action=create_recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(recipeData)
+      });
+      const data = await res.json();
+      
+      if (data.status === 'success') {
+        setUserRecipes(prev => [{ ...recipeData, id: data.id }, ...prev]);
+      } else {
+        setUserRecipes(prev => [{ ...recipeData, id: Date.now() }, ...prev]);
+      }
+    } catch (e) {
+      setUserRecipes(prev => [{ ...recipeData, id: Date.now() }, ...prev]);
+    }
+
     setRecipeCreated(true);
   };
 
-  const resetCreate = () => { setShowCreateModal(false); setRecipeCreated(false); setNewRecipe({ name: '', category: 'Lunch', calories: '', protein: '', prepTime: '', ingredients: '' }); };
+  // =========================================================================
+  // DUPLICATE RECIPE LOGIC (Acceptance Test #1 & #2)
+  // =========================================================================
+  const handleDuplicate = (recipe: any) => {
+    setNewRecipe({
+      name: `${recipe.name} - Copy`,
+      category: recipe.category || 'Lunch',
+      calories: recipe.calories ? String(recipe.calories) : '',
+      protein: recipe.protein ? String(recipe.protein) : '',
+      prepTime: recipe.prepTime || '15 min',
+      ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients.join(', ') : recipe.ingredients || ''
+    });
+    
+    // Close detail view, open create view with pre-filled state
+    setSelectedRecipe(null);
+    setShowCreateModal(true);
+    setRecipeCreated(false);
+  };
+
+  const resetCreate = () => { 
+    setShowCreateModal(false); 
+    setRecipeCreated(false); 
+    setNewRecipe({ name: '', category: 'Lunch', calories: '', protein: '', prepTime: '', ingredients: '' }); 
+  };
 
   return (
     <div className="min-h-screen bg-[#fdfcfb]">
@@ -103,47 +160,98 @@ export function RecipesPage() {
           <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <img src={selectedRecipe.image} alt={selectedRecipe.name} className="w-full h-48 object-cover rounded-t-lg" />
             <div className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-[#d97706] bg-[#d97706]/10 px-2 py-1 rounded">{selectedRecipe.category}</span>
-                <button onClick={() => setSelectedRecipe(null)} className="text-[#64748b] hover:text-[#1e293b]"><X className="size-5" /></button>
+              
+              {/* Header with the new Duplicate button */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-bold text-[#d97706] bg-[#d97706]/10 px-3 py-1.5 rounded-md uppercase tracking-wider">{selectedRecipe.category}</span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleDuplicate(selectedRecipe)} 
+                    className="flex items-center gap-1.5 text-xs font-bold text-[#d97706] bg-[#d97706]/10 px-3 py-1.5 rounded-lg hover:bg-[#d97706]/20 transition-colors"
+                  >
+                    <Copy className="size-4" /> Duplicate
+                  </button>
+                  <button onClick={() => setSelectedRecipe(null)} className="text-[#64748b] hover:text-[#1e293b] bg-gray-100 p-1.5 rounded-full"><X className="size-5" /></button>
+                </div>
               </div>
-              <h2 className="text-xl font-bold text-[#1e293b] mb-4">{selectedRecipe.name}</h2>
+
+              <h2 className="text-2xl font-bold text-[#1e293b] mb-4">{selectedRecipe.name}</h2>
               <div className="grid grid-cols-4 gap-2 mb-4">
-                <div className="text-center p-2 bg-[#fdfcfb] rounded-lg border border-gray-200"><div className="text-sm font-bold text-[#d97706]">{selectedRecipe.calories}</div><div className="text-xs text-[#64748b]">cal</div></div>
-                <div className="text-center p-2 bg-[#fdfcfb] rounded-lg border border-gray-200"><div className="text-sm font-bold text-[#d97706]">{selectedRecipe.protein}g</div><div className="text-xs text-[#64748b]">protein</div></div>
-                <div className="text-center p-2 bg-[#fdfcfb] rounded-lg border border-gray-200"><div className="text-sm font-bold text-[#d97706]">{selectedRecipe.carbs}g</div><div className="text-xs text-[#64748b]">carbs</div></div>
-                <div className="text-center p-2 bg-[#fdfcfb] rounded-lg border border-gray-200"><div className="text-sm font-bold text-[#d97706]">{selectedRecipe.fat}g</div><div className="text-xs text-[#64748b]">fat</div></div>
+                <div className="text-center p-2 bg-[#fdfcfb] rounded-lg border border-gray-200"><div className="text-sm font-bold text-[#d97706]">{selectedRecipe.calories}</div><div className="text-[10px] sm:text-xs text-[#64748b]">cal</div></div>
+                <div className="text-center p-2 bg-[#fdfcfb] rounded-lg border border-gray-200"><div className="text-sm font-bold text-[#d97706]">{selectedRecipe.protein}g</div><div className="text-[10px] sm:text-xs text-[#64748b]">protein</div></div>
+                <div className="text-center p-2 bg-[#fdfcfb] rounded-lg border border-gray-200"><div className="text-sm font-bold text-[#d97706]">{selectedRecipe.carbs}g</div><div className="text-[10px] sm:text-xs text-[#64748b]">carbs</div></div>
+                <div className="text-center p-2 bg-[#fdfcfb] rounded-lg border border-gray-200"><div className="text-sm font-bold text-[#d97706]">{selectedRecipe.fat}g</div><div className="text-[10px] sm:text-xs text-[#64748b]">fat</div></div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-[#64748b] mb-4"><Clock className="size-4" />{selectedRecipe.prepTime}</div>
-              {selectedRecipe.ingredients && (<div><h3 className="font-semibold text-[#1e293b] text-sm mb-2">Ingredients</h3><ul className="space-y-1">{selectedRecipe.ingredients.map((ing: string, i: number) => (<li key={i} className="text-sm text-[#64748b] flex items-center gap-2"><span className="w-1.5 h-1.5 bg-[#d97706] rounded-full flex-shrink-0"></span>{ing}</li>))}</ul></div>)}
+              <div className="flex items-center gap-2 text-sm text-[#64748b] mb-4 font-medium"><Clock className="size-4 text-[#d97706]" />{selectedRecipe.prepTime}</div>
+              
+              {selectedRecipe.ingredients && (
+                <div>
+                  <h3 className="font-bold text-[#1e293b] text-base mb-2">Ingredients</h3>
+                  <ul className="space-y-1.5 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    {selectedRecipe.ingredients.map((ing: string, i: number) => (
+                      <li key={i} className="text-sm text-[#1e293b] font-medium flex items-center gap-3">
+                        <span className="w-1.5 h-1.5 bg-[#d97706] rounded-full flex-shrink-0"></span>{ing}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Create Recipe Modal */}
+      {/* Create / Edit Form Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={resetCreate}>
-          <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={resetCreate}>
+          <div className="bg-white rounded-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#1e293b]">Create Recipe</h2>
-              <button onClick={resetCreate} className="text-[#64748b] hover:text-[#1e293b]"><X className="size-5" /></button>
+              <h2 className="text-xl font-bold text-[#1e293b]">Create Recipe</h2>
+              <button onClick={resetCreate} className="text-[#64748b] hover:bg-gray-100 p-1.5 rounded-full transition-colors"><X className="size-5" /></button>
             </div>
+            
             {recipeCreated ? (
-              <div className="text-center py-8"><div className="text-5xl mb-4">👨‍🍳</div><h3 className="text-xl font-bold text-[#1e293b] mb-2">Recipe Created!</h3><p className="text-[#64748b] mb-6">{newRecipe.name} has been added</p><button onClick={resetCreate} className="w-full bg-[#d97706] text-white py-3 rounded-lg hover:bg-[#b45309] font-medium">Done</button></div>
+              <div className="text-center py-8">
+                <div className="text-6xl mb-4">👨‍🍳</div>
+                <h3 className="text-2xl font-bold text-[#1e293b] mb-2">Recipe Created!</h3>
+                <p className="text-[#64748b] mb-6 font-medium">{newRecipe.name} has been added</p>
+                <button onClick={resetCreate} className="w-full bg-[#d97706] text-white py-3.5 rounded-xl hover:bg-[#b45309] font-bold text-lg shadow-sm">Done</button>
+              </div>
             ) : (
               <div className="space-y-4">
-                <div><label className="block text-sm font-medium text-[#1e293b] mb-1">Recipe Name *</label><input type="text" value={newRecipe.name} onChange={e => setNewRecipe({...newRecipe, name: e.target.value})} placeholder="e.g., Avocado Toast" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" /></div>
-                <div><label className="block text-sm font-medium text-[#1e293b] mb-1">Category</label><div className="flex gap-2 flex-wrap">{['Breakfast','Lunch','Dinner','Snacks'].map(c => (<button key={c} onClick={() => setNewRecipe({...newRecipe, category: c})} className={`px-3 py-1.5 rounded-full text-xs font-medium ${newRecipe.category === c ? 'bg-[#d97706] text-white' : 'bg-gray-100 text-[#64748b]'}`}>{c}</button>))}</div></div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div><label className="block text-sm font-medium text-[#1e293b] mb-1">Calories</label><input type="number" value={newRecipe.calories} onChange={e => setNewRecipe({...newRecipe, calories: e.target.value})} placeholder="400" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" /></div>
-                  <div><label className="block text-sm font-medium text-[#1e293b] mb-1">Protein (g)</label><input type="number" value={newRecipe.protein} onChange={e => setNewRecipe({...newRecipe, protein: e.target.value})} placeholder="30" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" /></div>
-                  <div><label className="block text-sm font-medium text-[#1e293b] mb-1">Prep Time</label><input type="text" value={newRecipe.prepTime} onChange={e => setNewRecipe({...newRecipe, prepTime: e.target.value})} placeholder="15 min" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706]" /></div>
+                <div>
+                  <label className="block text-sm font-bold text-[#1e293b] mb-1.5">Recipe Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={newRecipe.name} onChange={e => setNewRecipe({...newRecipe, name: e.target.value})} placeholder="e.g., Avocado Toast" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706] focus:border-transparent transition-all" />
                 </div>
-                <div><label className="block text-sm font-medium text-[#1e293b] mb-1">Ingredients (comma-separated)</label><textarea value={newRecipe.ingredients} onChange={e => setNewRecipe({...newRecipe, ingredients: e.target.value})} placeholder="Avocado, Bread, Eggs, Salt, Pepper" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706] resize-none" rows={3} /></div>
-                <div className="flex gap-3 pt-2">
-                  <button onClick={resetCreate} className="flex-1 px-4 py-2.5 border-2 border-[#64748b] text-[#64748b] rounded-lg font-medium text-sm">Cancel</button>
-                  <button onClick={handleCreateRecipe} disabled={!newRecipe.name} className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-sm text-white ${!newRecipe.name ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#d97706] hover:bg-[#b45309]'}`}>Create</button>
+                <div>
+                  <label className="block text-sm font-bold text-[#1e293b] mb-1.5">Category</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {['Breakfast','Lunch','Dinner','Snacks'].map(c => (
+                      <button key={c} onClick={() => setNewRecipe({...newRecipe, category: c})} className={`px-4 py-2 rounded-full text-xs font-bold transition-colors ${newRecipe.category === c ? 'bg-[#d97706] text-white shadow-sm' : 'bg-gray-100 text-[#64748b] hover:bg-gray-200'}`}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-sm font-bold text-[#1e293b] mb-1.5">Calories</label>
+                    <input type="number" value={newRecipe.calories} onChange={e => setNewRecipe({...newRecipe, calories: e.target.value})} placeholder="400" className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706] focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-[#1e293b] mb-1.5">Protein (g)</label>
+                    <input type="number" value={newRecipe.protein} onChange={e => setNewRecipe({...newRecipe, protein: e.target.value})} placeholder="30" className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706] focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-[#1e293b] mb-1.5">Prep Time</label>
+                    <input type="text" value={newRecipe.prepTime} onChange={e => setNewRecipe({...newRecipe, prepTime: e.target.value})} placeholder="15 min" className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706] focus:border-transparent" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#1e293b] mb-1.5">Ingredients <span className="text-xs font-medium text-gray-400">(comma-separated)</span></label>
+                  <textarea value={newRecipe.ingredients} onChange={e => setNewRecipe({...newRecipe, ingredients: e.target.value})} placeholder="Avocado, Bread, Eggs, Salt, Pepper" className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706] focus:border-transparent resize-none h-24" />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button onClick={resetCreate} className="flex-1 px-4 py-3 border-2 border-[#64748b] text-[#64748b] rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors">Cancel</button>
+                  <button onClick={handleCreateRecipe} disabled={!newRecipe.name} className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm text-white transition-all ${!newRecipe.name ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#d97706] hover:bg-[#b45309] shadow-md'}`}>Create</button>
                 </div>
               </div>
             )}
