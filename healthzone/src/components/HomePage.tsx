@@ -40,6 +40,27 @@ export function HomePage() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   // =========================================================================
+  // LEADERBOARD & CHALLENGES STATE
+  // =========================================================================
+  const LEADERBOARD_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/leaderboard.php";
+  const CHALLENGES_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/challenges.php";
+
+  type LeaderboardEntry = { id: number; username: string; total_points: number };
+  type Challenge = {
+    challenge_id: number; name: string; description: string;
+    icon_name: string; metric_key: string; target_value: number;
+    unit_label: string; points_reward: number; progress: number;
+    progress_percent: number; progress_text: string;
+    participant_count: number; status: string; is_joined: boolean;
+  };
+
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [myRank, setMyRank] = useState<number | null>(null);
+  const [myPoints, setMyPoints] = useState(0);
+  const [myUsername, setMyUsername] = useState('You');
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+
+  // =========================================================================
   // MEAL STATE — fetched from backend, no local modal needed
   // =========================================================================
   const [loggedMeals, setLoggedMeals] = useState<any[]>([]);
@@ -101,6 +122,25 @@ export function HomePage() {
       .then(res => res.json())
       .then(data => { if (data.count !== undefined) setUnreadCount(data.count); })
       .catch(() => {});
+
+    // Fetch leaderboard
+    fetch(LEADERBOARD_URL, { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          setLeaderboard(data.leaderboard || []);
+          setMyRank(data.my_rank ?? null);
+          setMyPoints(data.my_points || 0);
+          setMyUsername(data.my_username || 'You');
+        }
+      })
+      .catch(() => {});
+
+    // Fetch challenges
+    fetch(`${CHALLENGES_URL}?action=get_available_challenges`, { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setChallenges(data); })
+      .catch(() => {});
   }, []);
 
   // Post the completed workout to the Database API
@@ -118,7 +158,20 @@ export function HomePage() {
       const data = await response.json();
 
       if (data.status === 'success') {
-        setWorkoutComplete(true); 
+        setWorkoutComplete(true);
+        // Refresh challenges and leaderboard — workout completion may award points
+        Promise.all([
+          fetch(`${CHALLENGES_URL}?action=get_available_challenges`, { credentials: 'include' }).then(r => r.json()),
+          fetch(LEADERBOARD_URL, { credentials: 'include' }).then(r => r.json()),
+        ]).then(([challengesData, leaderboardData]) => {
+          if (Array.isArray(challengesData)) setChallenges(challengesData);
+          if (leaderboardData.status === 'success') {
+            setLeaderboard(leaderboardData.leaderboard || []);
+            setMyRank(leaderboardData.my_rank ?? null);
+            setMyPoints(leaderboardData.my_points || 0);
+            setMyUsername(leaderboardData.my_username || 'You');
+          }
+        }).catch(() => {});
       } else {
         alert("Failed to log workout: " + data.message);
       }
@@ -152,9 +205,24 @@ export function HomePage() {
     proteinsGoal: 180,
   };
 
-  // NOTE: Challenges & leaderboard are placeholder — will be connected to backend in a future sprint
-  // const challenges = [ ... ];
-  // const leaderboard = [ ... ];
+  const ICON_EMOJI: Record<string, string> = {
+    flame: '🔥', activity: '⚡', dumbbell: '💪', trophy: '🏆', heart: '❤️', star: '⭐',
+  };
+
+  const handleJoinChallenge = async (challengeId: number) => {
+    try {
+      const res = await fetch(`${CHALLENGES_URL}?action=join`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challenge_id: challengeId }),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        const updated = await fetch(`${CHALLENGES_URL}?action=get_available_challenges`, { credentials: 'include' }).then(r => r.json());
+        if (Array.isArray(updated)) setChallenges(updated);
+      }
+    } catch (e) { console.error(e); }
+  };
 
   return (
     <div className="min-h-screen bg-[#fdfcfb]">
@@ -313,31 +381,56 @@ export function HomePage() {
           )}
         </div>
 
-        {/* Active Challenges — COMING SOON (not connected to backend yet) */}
+        {/* Challenges — Dynamic from backend */}
         <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-lg shadow-md p-4 mb-4 text-white relative overflow-hidden">
           <div className="flex items-center gap-2 mb-3">
             <Trophy className="size-5 text-[#d97706]" />
-            <h2 className="text-base font-semibold">Active Challenges</h2>
-            <span className="text-[10px] bg-[#d97706] text-white px-2 py-0.5 rounded-full font-medium">Coming Soon</span>
+            <h2 className="text-base font-semibold">Challenges</h2>
+            {myPoints > 0 && (
+              <span className="text-[10px] bg-[#d97706] text-white px-2 py-0.5 rounded-full font-medium">{myPoints.toLocaleString()} pts</span>
+            )}
           </div>
-          <div className="bg-white/10 rounded-lg p-3 mb-3 opacity-60">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">🔥 30-Day Consistency</span>
-              <span className="text-xs text-[#d97706]">Day 18/30</span>
+          {challenges.length === 0 ? (
+            <p className="text-sm text-white/60 text-center py-4">No challenges available yet</p>
+          ) : (
+            <div className="space-y-3">
+              {challenges.map((challenge) => (
+                <div key={challenge.challenge_id} className={`bg-white/10 rounded-lg p-3 ${challenge.status === 'completed' ? 'opacity-60' : ''}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium">
+                      {ICON_EMOJI[challenge.icon_name] ?? '🏆'} {challenge.name}
+                    </span>
+                    <span className="text-xs text-[#d97706] font-semibold">+{challenge.points_reward} pts</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
+                    <span>{challenge.participant_count.toLocaleString()} participants</span>
+                    <span>{challenge.progress_text}</span>
+                  </div>
+                  {challenge.is_joined && challenge.status !== 'completed' && (
+                    <div className="w-full bg-white/20 rounded-full h-1.5 mb-2">
+                      <div className="bg-[#d97706] h-1.5 rounded-full transition-all" style={{ width: `${challenge.progress_percent}%` }} />
+                    </div>
+                  )}
+                  {challenge.status === 'completed' ? (
+                    <span className="text-xs text-green-400 font-medium">✓ Completed — {challenge.points_reward} pts earned</span>
+                  ) : challenge.is_joined ? (
+                    <span className="text-xs text-white/50">Log workouts to advance progress</span>
+                  ) : (
+                    <button
+                      onClick={() => handleJoinChallenge(challenge.challenge_id)}
+                      className="text-xs bg-white/20 text-white px-3 py-1 rounded-full font-medium hover:bg-white/30 transition-colors"
+                    >
+                      Join Challenge
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
-            <div className="w-full bg-white/20 rounded-full h-2 mb-2">
-              <div className="bg-[#d97706] h-2 rounded-full" style={{ width: '60%' }}></div>
-            </div>
-            <div className="flex items-center justify-between text-xs text-gray-300">
-              <span>1,245 participants</span>
-              <span>Your rank: #156</span>
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* Leaderboard — COMING SOON (not connected to backend yet) */}
+        {/* Leaderboard — Dynamic from backend */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-4 relative">
-          <div className="absolute top-3 right-3"><span className="text-[10px] bg-[#d97706] text-white px-2 py-0.5 rounded-full font-medium">Coming Soon</span></div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Trophy className="size-5 text-[#d97706]" />
@@ -345,22 +438,36 @@ export function HomePage() {
             </div>
             <button onClick={() => navigate('/community')} className="text-xs text-[#d97706] font-medium">View All</button>
           </div>
-          <div className="space-y-2">
-            {[
-              { rank: 1, name: 'Sarah Chen', points: 2840, medal: '🥇' },
-              { rank: 2, name: 'Mike Rodriguez', points: 2735, medal: '🥈' },
-              { rank: 3, name: 'Jordan Kim', points: 2680, medal: '🥉' },
-              { rank: 156, name: 'You', points: 1450, medal: '', isYou: true },
-            ].map((entry) => (
-              <div key={entry.rank} className={`flex items-center justify-between p-2 rounded-lg ${entry.isYou ? 'bg-[#d97706]/10 border border-[#d97706]/30' : ''}`}>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm w-6">{entry.medal || `#${entry.rank}`}</span>
-                  <span className={`text-sm ${entry.isYou ? 'font-bold text-[#d97706]' : 'text-[#1e293b]'}`}>{entry.name}</span>
+          {leaderboard.length === 0 ? (
+            <p className="text-sm text-[#64748b] text-center py-4">No rankings yet — complete challenges to earn points!</p>
+          ) : (
+            <div className="space-y-2">
+              {leaderboard.map((entry, idx) => {
+                const medals = ['🥇', '🥈', '🥉'];
+                return (
+                  <div key={entry.id} className="flex items-center justify-between p-2 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm w-6">{medals[idx] || `#${idx + 1}`}</span>
+                      <span className="text-sm text-[#1e293b]">{entry.username}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-[#64748b]">{Number(entry.total_points).toLocaleString()} pts</span>
+                  </div>
+                );
+              })}
+              {myRank !== null && myRank > leaderboard.length && (
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[#d97706]/10 border border-[#d97706]/30">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm w-6">#{myRank}</span>
+                    <span className="text-sm font-bold text-[#d97706]">{myUsername}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-[#64748b]">{myPoints.toLocaleString()} pts</span>
                 </div>
-                <span className="text-sm font-semibold text-[#64748b]">{entry.points.toLocaleString()} pts</span>
-              </div>
-            ))}
-          </div>
+              )}
+              {myPoints === 0 && (
+                <p className="text-xs text-[#64748b] text-center pt-1">Complete challenges to appear on the leaderboard!</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Recommended Recipes */}
