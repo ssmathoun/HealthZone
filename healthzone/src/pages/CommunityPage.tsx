@@ -143,8 +143,36 @@ export function CommunityPage() {
 
   useEffect(() => { fetchPosts(); }, []);
 
-  const handleLike = (postId: number) => {
-    setLikedPosts(prev => ({ ...prev, [postId]: !prev[postId] }));
+  const handleLike = async (postId: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/posts.php?action=toggle_like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ post_id: postId })
+      });
+      const data = await res.json();
+      
+      if (data.status === 'success') {
+        // Optimistically update the UI local state
+        setLikedPosts(prev => ({ ...prev, [postId]: data.liked }));
+        
+        // Update the main posts array so the number counter changes
+        setPosts(prevPosts => prevPosts.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              // If data.liked is true, we incremented. If false, we decremented.
+              likes: data.liked ? (p.likes + 1) : (p.likes - 1),
+              liked_by_user: data.liked
+            };
+          }
+          return p;
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to toggle like", err);
+    }
   };
 
   // Media file selection
