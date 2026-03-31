@@ -95,8 +95,22 @@ export function HomePage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
   const [myPoints, setMyPoints] = useState(0);
+  const [myIsRanked, setMyIsRanked] = useState(false);
   const [myUsername, setMyUsername] = useState("You");
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+
+  const refreshLeaderboard = () =>
+    fetch(LEADERBOARD_URL, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.status !== "success") return;
+        setLeaderboard(data.leaderboard ?? []);
+        setMyRank(data.my_rank ?? null);
+        setMyPoints(data.my_points ?? 0);
+        setMyIsRanked(!!data.my_is_ranked);
+        setMyUsername(data.my_username ?? "You");
+      })
+      .catch(() => {});
 
   // =========================================================================
   // MEAL STATE — fetched from backend, no local modal needed
@@ -179,17 +193,7 @@ export function HomePage() {
       .catch(() => {});
 
     // Fetch leaderboard
-    fetch(LEADERBOARD_URL, { credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "success") {
-          setLeaderboard(data.leaderboard || []);
-          setMyRank(data.my_rank ?? null);
-          setMyPoints(data.my_points || 0);
-          setMyUsername(data.my_username || "You");
-        }
-      })
-      .catch(() => {});
+    refreshLeaderboard();
 
     // Fetch challenges
     fetch(`${CHALLENGES_URL}?action=get_available_challenges`, {
@@ -209,10 +213,10 @@ export function HomePage() {
         "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=finish_workout",
         {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             workout_id: selectedWorkout.id,
-            user_id: 1, // Fallback if session isn't carrying over during dev
           }),
         },
       );
@@ -221,25 +225,16 @@ export function HomePage() {
 
       if (data.status === "success") {
         setWorkoutComplete(true);
-        // Refresh challenges and leaderboard — workout completion may award points
-        Promise.all([
-          fetch(`${CHALLENGES_URL}?action=get_available_challenges`, {
-            credentials: "include",
-          }).then((r) => r.json()),
-          fetch(LEADERBOARD_URL, { credentials: "include" }).then((r) =>
-            r.json(),
-          ),
-        ])
-          .then(([challengesData, leaderboardData]) => {
-            if (Array.isArray(challengesData)) setChallenges(challengesData);
-            if (leaderboardData.status === "success") {
-              setLeaderboard(leaderboardData.leaderboard || []);
-              setMyRank(leaderboardData.my_rank ?? null);
-              setMyPoints(leaderboardData.my_points || 0);
-              setMyUsername(leaderboardData.my_username || "You");
-            }
+        // Refresh challenges and leaderboard after workout
+        fetch(`${CHALLENGES_URL}?action=get_available_challenges`, {
+          credentials: "include",
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (Array.isArray(data)) setChallenges(data);
           })
           .catch(() => {});
+        refreshLeaderboard();
       } else {
         alert("Failed to log workout: " + data.message);
       }
@@ -291,22 +286,22 @@ export function HomePage() {
 
   const handleJoinChallenge = async (challengeId: number) => {
     try {
-      const res = await fetch(`${CHALLENGES_URL}?action=join`, {
+      await fetch(`${CHALLENGES_URL}?action=join`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challenge_id: challengeId }),
       });
-      const data = await res.json();
-      if (data.status === "success") {
-        const updated = await fetch(
-          `${CHALLENGES_URL}?action=get_available_challenges`,
-          { credentials: "include" },
-        ).then((r) => r.json());
-        if (Array.isArray(updated)) setChallenges(updated);
-      }
     } catch (e) {
       console.error(e);
+    } finally {
+      const updated = await fetch(
+        `${CHALLENGES_URL}?action=get_available_challenges`,
+        { credentials: "include" },
+      )
+        .then((r) => r.json())
+        .catch(() => null);
+      if (Array.isArray(updated)) setChallenges(updated);
     }
   };
 
