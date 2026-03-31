@@ -25,6 +25,7 @@ try {
             JOIN users u ON p.user_id = u.id
             ORDER BY p.created_at DESC
         ");
+        // Pass current user ID so we know if the heart should be pre-filled
         $stm->execute(['uid' => $user_id ?? 0]);
         $posts = $stm->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode(["status" => "success", "posts" => $posts]);
@@ -35,28 +36,29 @@ try {
         $data = json_decode(file_get_contents("php://input"), true);
         $post_id = $data['post_id'] ?? null;
     
-        if (!$post_id) {
-            echo json_encode(["status" => "error", "message" => "Post ID required"]);
+        if (!$post_id || !$user_id) {
+            echo json_encode(["status" => "error", "message" => "Post ID and Login required"]);
             exit;
         }
     
-        // Check if like exists
+        // Check if like already exists
         $check = $connection->prepare("SELECT id FROM post_likes WHERE user_id = :uid AND post_id = :pid");
         $check->execute(['uid' => $user_id, 'pid' => $post_id]);
         $existing = $check->fetch();
     
         if ($existing) {
-            // Test #2 Logic: Remove if exists (Unlike)
-            $connection->prepare("DELETE FROM post_likes WHERE id = :id")->execute(['id' => $existing['id']]);
-            $liked = false;
+            // TEST #2: Clicked again, so DELETE the like (Unlike)
+            $del = $connection->prepare("DELETE FROM post_likes WHERE user_id = :uid AND post_id = :pid");
+            $del->execute(['uid' => $user_id, 'pid' => $post_id]);
+            $is_liked = false;
         } else {
-            // Test #1 Logic: Increment if not exists (Like)
-            $connection->prepare("INSERT INTO post_likes (user_id, post_id) VALUES (:uid, :pid)")
-                       ->execute(['uid' => $user_id, 'pid' => $post_id]);
-            $liked = true;
+            // TEST #1: Not liked yet, so INSERT the like
+            $ins = $connection->prepare("INSERT INTO post_likes (user_id, post_id) VALUES (:uid, :pid)");
+            $ins->execute(['uid' => $user_id, 'pid' => $post_id]);
+            $is_liked = true;
         }
     
-        echo json_encode(["status" => "success", "liked" => $liked]);
+        echo json_encode(["status" => "success", "liked" => $is_liked]);
         exit;
     }
     
