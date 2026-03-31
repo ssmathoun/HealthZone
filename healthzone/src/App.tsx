@@ -12,8 +12,11 @@ import { CreateRecipePage } from "./pages/CreateRecipePage";
 import { CreateWorkoutPage } from "./pages/CreateWorkoutPage";
 import { LogMealPage } from "./pages/LogMealPage";
 import { SleepPage } from "./pages/SleepPage";
+import { RestTimerPage } from "./pages/RestTimerPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { WeightTrackerPage } from "./pages/WeightTrackerPage";
+import { GlobalRestTimerButton } from "./components/GlobalRestTimerButton";
+import { RestTimerProvider } from "./components/RestTimerProvider";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
 
@@ -76,27 +79,31 @@ export default function App() {
           path="/*"
           element={
             <AuthGuard>
-              <Routes>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route
-                  path="/profile"
-                  element={isMobile ? <ProfilePageMobile /> : <ProfilePage />}
-                />
-                <Route path="/workouts" element={<WorkoutsPage />} />
-                <Route path="/recipes" element={<RecipesPage />} />
-                <Route path="/community" element={<CommunityPage />} />
-                <Route path="/forum" element={<CommunityPage />} />
-                <Route path="/create-recipe" element={<CreateRecipePage />} />
-                <Route path="/create-workout" element={<CreateWorkoutPage />} />
-                <Route path="/log-meal" element={<LogMealPage />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/sleep" element={<SleepPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/weight-tracker" element={<WeightTrackerPage />} />
-                <Route path="/log-workout" element={<WorkoutsPage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+              <RestTimerProvider>
+                <GlobalRestTimerButton />
+                <Routes>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route 
+                    path="/profile" 
+                    element={isMobile ? <ProfilePageMobile /> : <ProfilePage />} 
+                  />
+                  <Route path="/workouts" element={<WorkoutsPage />} />
+                  <Route path="/recipes" element={<RecipesPage />} />
+                  <Route path="/community" element={<CommunityPage />} />
+                  <Route path="/forum" element={<CommunityPage />} />
+                  <Route path="/create-recipe" element={<CreateRecipePage />} />
+                  <Route path="/create-workout" element={<CreateWorkoutPage />} />
+                  <Route path="/log-meal" element={<LogMealPage />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
+                  <Route path="/sleep" element={<SleepPage />} />
+                  <Route path="/rest-timer" element={<RestTimerPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/weight-tracker" element={<WeightTrackerPage />} />
+                  <Route path="/log-workout" element={<WorkoutsPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </RestTimerProvider>
             </AuthGuard>
           }
         />

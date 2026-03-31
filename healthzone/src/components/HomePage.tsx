@@ -1,28 +1,111 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Activity,
-  Heart,
-  Dumbbell,
-  Moon,
-  Plus,
-  UtensilsCrossed,
-  LogOut,
-  User,
-  Settings,
-  Scale,
-  Bell,
-  BookOpen,
-  Users,
-  Trophy,
-  Calendar,
-  ArrowLeft,
-  X,
-  Flame,
-  MessageCircle,
-  MapPin,
-  Star,
-} from "lucide-react";
+import { useState, useEffect, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Activity, Heart, Dumbbell, Moon, Plus, UtensilsCrossed, LogOut, User, Settings, Scale, Bell, Clock3,
+  BookOpen, Trophy, Calendar, ArrowLeft, X, Flame, MessageCircle, MapPin, Star
+} from 'lucide-react';
+
+const CHALLENGES_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/challenges.php";
+
+type Challenge = {
+  challenge_id: number;
+  name: string;
+  description: string;
+  icon_name: string;
+  target_value: number;
+  unit_label: string;
+  progress: number;
+  progress_percent: number;
+  progress_text: string;
+  participant_count: number;
+  status: string;
+  is_joined: boolean;
+};
+
+type WorkoutExercise = {
+  name: string;
+  sets: number;
+  reps: string | number;
+  rest: string;
+  weight: string;
+};
+
+type Workout = {
+  id: number;
+  name: string;
+  difficulty: string;
+  duration: number;
+  calories: number;
+  trainer: string;
+  exercises: WorkoutExercise[];
+  muscleGroups?: string[];
+};
+
+type Trainer = {
+  id: number;
+  name: string;
+  specialty: string;
+  rating: number;
+  emoji: string;
+  bio: string;
+  clients: number;
+  certifications: string[];
+  workouts: string[];
+};
+
+type Meal = {
+  id: number;
+  name: string;
+  calories: string | number;
+  protein: string | number;
+  carbs: string | number;
+  fat: string | number;
+  meal_type?: string;
+  type?: string;
+};
+
+async function fetchChallengeList(action: string): Promise<Challenge[]> {
+  const response = await fetch(`${CHALLENGES_URL}?action=${action}`, { credentials: 'include' });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchChallengeDashboardData() {
+  const [activeChallenges, availableChallenges] = await Promise.all([
+    fetchChallengeList('get_user_challenges'),
+    fetchChallengeList('get_available_challenges'),
+  ]);
+
+  const activeIds = new Set(activeChallenges.map((challenge) => challenge.challenge_id));
+
+  return {
+    activeChallenges,
+    availableChallenges: availableChallenges.filter(
+      (challenge) => !challenge.is_joined && !activeIds.has(challenge.challenge_id)
+    ),
+  };
+}
+
+function getChallengeIcon(iconName: string) {
+  if (iconName === 'flame') {
+    return <Flame className="size-5 text-[#d97706]" />;
+  }
+
+  if (iconName === 'activity') {
+    return <Activity className="size-5 text-[#d97706]" />;
+  }
+
+  if (iconName === 'dumbbell') {
+    return <Dumbbell className="size-5 text-[#d97706]" />;
+  }
+
+  return <Trophy className="size-5 text-[#d97706]" />;
+}
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -30,15 +113,15 @@ export function HomePage() {
   // =========================================================================
   // WORKOUT LOGGER STATE & API INTEGRATION
   // =========================================================================
-  const [trainerWorkouts, setTrainerWorkouts] = useState<any[]>([]);
+  const [trainerWorkouts, setTrainerWorkouts] = useState<Workout[]>([]);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
-  const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
+  const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [workoutInProgress, setWorkoutInProgress] = useState(false);
   const [completedSets, setCompletedSets] = useState<{
     [key: string]: boolean;
   }>({});
   const [workoutComplete, setWorkoutComplete] = useState(false);
-  const [selectedTrainer, setSelectedTrainer] = useState<any>(null);
+  const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
 
   // =========================================================================
   // NUTRITION STATS (TODAY) — fetched from backend
@@ -53,7 +136,6 @@ export function HomePage() {
   };
 
   const [nutrition, setNutrition] = useState<NutritionToday | null>(null);
-  const [nutritionLoading, setNutritionLoading] = useState(true);
 
   // Sleep tracking
   const SLEEP_URL =
@@ -115,7 +197,27 @@ export function HomePage() {
   // =========================================================================
   // MEAL STATE — fetched from backend, no local modal needed
   // =========================================================================
-  const [loggedMeals, setLoggedMeals] = useState<any[]>([]);
+  const [loggedMeals, setLoggedMeals] = useState<Meal[]>([]);
+  const [activeChallenges, setActiveChallenges] = useState<Challenge[]>([]);
+  const [availableChallenges, setAvailableChallenges] = useState<Challenge[]>([]);
+  const [challengesLoading, setChallengesLoading] = useState(true);
+  const [joiningChallengeId, setJoiningChallengeId] = useState<number | null>(null);
+
+  const refreshChallenges = async () => {
+    setChallengesLoading(true);
+
+    try {
+      const challengeData = await fetchChallengeDashboardData();
+      setActiveChallenges(challengeData.activeChallenges);
+      setAvailableChallenges(challengeData.availableChallenges);
+    } catch (error) {
+      console.error("Error fetching challenges:", error);
+      setActiveChallenges([]);
+      setAvailableChallenges([]);
+    } finally {
+      setChallengesLoading(false);
+    }
+  };
 
   // Fetch Workouts from your actual Database API
   useEffect(() => {
@@ -138,8 +240,7 @@ export function HomePage() {
           setNutrition(data);
         }
       })
-      .catch(() => {})
-      .finally(() => setNutritionLoading(false));
+      .catch(() => {});
 
     // Fetch today's meals from backend
     fetch(
@@ -204,37 +305,32 @@ export function HomePage() {
         if (Array.isArray(data)) setChallenges(data);
       })
       .catch(() => {});
+
+    void refreshChallenges();
   }, []);
 
   // Post the completed workout to the Database API
   const handleFinishWorkout = async () => {
-    try {
-      const response = await fetch(
-        "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=finish_workout",
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            workout_id: selectedWorkout.id,
-          }),
-        },
-      );
+    if (!selectedWorkout) {
+      return;
+    }
 
+    try {
+      const response = await fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=finish_workout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          workout_id: selectedWorkout.id,
+          user_id: 1 // Fallback if session isn't carrying over during dev
+        })
+      });
+      
       const data = await response.json();
 
-      if (data.status === "success") {
-        setWorkoutComplete(true);
-        // Refresh challenges and leaderboard after workout
-        fetch(`${CHALLENGES_URL}?action=get_available_challenges`, {
-          credentials: "include",
-        })
-          .then((r) => r.json())
-          .then((data) => {
-            if (Array.isArray(data)) setChallenges(data);
-          })
-          .catch(() => {});
-        refreshLeaderboard();
+      if (data.status === 'success') {
+        setWorkoutComplete(true); 
+        void refreshChallenges();
       } else {
         alert("Failed to log workout: " + data.message);
       }
@@ -251,6 +347,33 @@ export function HomePage() {
     setWorkoutComplete(false);
     setShowWorkoutModal(false);
   };
+
+  const handleJoinChallenge = async (challengeId: number) => {
+    setJoiningChallengeId(challengeId);
+
+    try {
+      const response = await fetch(`${CHALLENGES_URL}?action=join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ challenge_id: challengeId }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        await refreshChallenges();
+      } else {
+        alert(data.message || "Unable to join challenge.");
+      }
+    } catch (error) {
+      console.error("Error joining challenge:", error);
+      alert("Something went wrong joining the challenge.");
+    } finally {
+      setJoiningChallengeId(null);
+    }
+  };
+
 
   // =========================================================================
   // COMPUTED STATS — uses real nutrition API data with fallback defaults
@@ -283,43 +406,6 @@ export function HomePage() {
     heart: "❤️",
     star: "⭐",
   };
-
-  const handleJoinLeaderboard = async () => {
-    try {
-      const res = await fetch(`${CHALLENGES_URL}?action=join_leaderboard`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await res.json();
-      if (data?.status !== "success") return;
-    } catch {
-      return;
-    }
-    refreshLeaderboard();
-  };
-
-  const handleJoinChallenge = async (challengeId: number) => {
-    try {
-      await fetch(`${CHALLENGES_URL}?action=join`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challenge_id: challengeId }),
-      });
-    } catch (e) {
-      console.error(e);
-    } finally {
-      const updated = await fetch(
-        `${CHALLENGES_URL}?action=get_available_challenges`,
-        { credentials: "include" },
-      )
-        .then((r) => r.json())
-        .catch(() => null);
-      if (Array.isArray(updated)) setChallenges(updated);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#fdfcfb]">
       {/* Navigation */}
@@ -532,6 +618,10 @@ export function HomePage() {
               <MessageCircle className="size-6" />
               <span className="text-xs font-medium">Forum</span>
             </button>
+            <button onClick={() => navigate('/rest-timer')} className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
+              <Clock3 className="size-6" />
+              <span className="text-xs font-medium">Rest Timer</span>
+            </button>
           </div>
         </div>
         {/* Today's Meals */}
@@ -594,69 +684,95 @@ export function HomePage() {
           )}
         </div>
 
-        {/* Challenges — Dynamic from backend */}
+        {/* Active Challenges */}
         <div className="bg-gradient-to-br from-[#1e293b] to-[#334155] rounded-lg shadow-md p-4 mb-4 text-white relative overflow-hidden">
           <div className="flex items-center gap-2 mb-3">
             <Trophy className="size-5 text-[#d97706]" />
-            <h2 className="text-base font-semibold">Challenges</h2>
-            {myPoints > 0 && (
+            <h2 className="text-base font-semibold">Active Challenges</h2>
+            {activeChallenges.length > 0 && (
               <span className="text-[10px] bg-[#d97706] text-white px-2 py-0.5 rounded-full font-medium">
-                {myPoints.toLocaleString()} pts
+                {activeChallenges.length} Active
               </span>
             )}
           </div>
-          {challenges.length === 0 ? (
-            <p className="text-sm text-white/60 text-center py-4">
-              No challenges available yet
-            </p>
+          {challengesLoading ? (
+            <div className="bg-white/10 rounded-lg p-3">
+              <p className="text-sm text-gray-200">Loading challenges...</p>
+            </div>
+          ) : activeChallenges.length === 0 ? (
+            <div className="bg-white/10 rounded-lg p-3">
+              <p className="text-sm font-medium text-white mb-1">No active challenges yet</p>
+              <p className="text-xs text-gray-300">Join one below and your workout progress will start tracking here.</p>
+            </div>
           ) : (
             <div className="space-y-3">
-              {challenges.map((challenge) => (
-                <div
-                  key={challenge.challenge_id}
-                  className={`bg-white/10 rounded-lg p-3 ${challenge.status === "completed" ? "opacity-60" : ""}`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">
-                      {ICON_EMOJI[challenge.icon_name] ?? "🏆"} {challenge.name}
-                    </span>
-                    <span className="text-xs text-[#d97706] font-semibold">
-                      +{challenge.points_reward} pts
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
-                    <span>
-                      {challenge.participant_count.toLocaleString()}{" "}
-                      participants
-                    </span>
-                    <span>{challenge.progress_text}</span>
-                  </div>
-                  {challenge.is_joined && challenge.status !== "completed" && (
-                    <div className="w-full bg-white/20 rounded-full h-1.5 mb-2">
-                      <div
-                        className="bg-[#d97706] h-1.5 rounded-full transition-all"
-                        style={{ width: `${challenge.progress_percent}%` }}
-                      />
+              {activeChallenges.map((challenge) => (
+                <div key={challenge.challenge_id} className="bg-white/10 rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                        {getChallengeIcon(challenge.icon_name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-white">{challenge.name}</p>
+                        <p className="text-xs text-gray-300">{challenge.description}</p>
+                      </div>
                     </div>
-                  )}
-                  {challenge.status === "completed" ? (
-                    <span className="text-xs text-green-400 font-medium">
-                      ✓ Completed — {challenge.points_reward} pts earned
+                    <span className={`text-[10px] px-2 py-1 rounded-full font-medium whitespace-nowrap ${challenge.status === 'completed' ? 'bg-green-500/20 text-green-100' : 'bg-[#d97706]/20 text-[#fdba74]'}`}>
+                      {challenge.status === 'completed' ? 'Completed' : challenge.progress_text}
                     </span>
-                  ) : challenge.is_joined ? (
-                    <span className="text-xs text-white/50">
-                      Log workouts to advance progress
-                    </span>
-                  ) : (
+                  </div>
+                  <div className="w-full bg-white/20 rounded-full h-2 mb-2">
+                    <div className="bg-[#d97706] h-2 rounded-full transition-all duration-300" style={{ width: `${challenge.progress_percent}%` }}></div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-300">
+                    <span>{challenge.participant_count.toLocaleString()} participants</span>
+                    <span>{challenge.progress_percent}% complete</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Available Challenges */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="size-5 text-[#d97706]" />
+              <h2 className="text-base font-semibold text-[#1e293b]">Available Challenges</h2>
+            </div>
+            <span className="text-xs text-[#64748b]">Join from your dashboard</span>
+          </div>
+          {challengesLoading ? (
+            <p className="text-sm text-[#64748b] text-center py-4">Loading challenges...</p>
+          ) : availableChallenges.length === 0 ? (
+            <p className="text-sm text-[#64748b] text-center py-4">You&apos;re already in all available challenges.</p>
+          ) : (
+            <div className="space-y-3">
+              {availableChallenges.map((challenge) => (
+                <div key={challenge.challenge_id} className="border border-gray-200 rounded-lg p-3 hover:border-[#d97706] transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-[#d97706]/10 flex items-center justify-center flex-shrink-0">
+                        {getChallengeIcon(challenge.icon_name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-[#1e293b] text-sm">{challenge.name}</p>
+                        <p className="text-xs text-[#64748b] mt-1">{challenge.description}</p>
+                        <p className="text-xs text-[#64748b] mt-2">
+                          Goal: {challenge.target_value} {challenge.unit_label} • {challenge.participant_count.toLocaleString()} participants
+                        </p>
+                      </div>
+                    </div>
                     <button
-                      onClick={() =>
-                        handleJoinChallenge(challenge.challenge_id)
-                      }
-                      className="text-xs bg-white/20 text-white px-3 py-1 rounded-full font-medium hover:bg-white/30 transition-colors"
+                      onClick={() => handleJoinChallenge(challenge.challenge_id)}
+                      disabled={joiningChallengeId === challenge.challenge_id}
+                      className="bg-[#d97706] text-white text-xs font-medium px-4 py-2 rounded-full hover:bg-[#b45309] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Join Challenge
+                      {joiningChallengeId === challenge.challenge_id ? 'Joining...' : 'Join'}
                     </button>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -714,14 +830,6 @@ export function HomePage() {
                 {myPoints.toLocaleString()} pts
               </span>
             </div>
-            {!myIsRanked && (
-              <button
-                onClick={handleJoinLeaderboard}
-                className="w-full mt-2 bg-[#d97706] text-white text-sm font-medium py-2 rounded-lg hover:opacity-90 transition-opacity"
-              >
-                Join the Competition
-              </button>
-            )}
           </div>
         </div>
 
@@ -1073,63 +1181,23 @@ export function HomePage() {
                   </span>
                 </div>
                 <div className="space-y-3 mb-6">
-                  {selectedWorkout.exercises &&
-                    selectedWorkout.exercises.map((ex: any, idx: number) => {
-                      const allDone = Array.from(
-                        { length: ex.sets },
-                        (_, s) => completedSets[`${idx}-${s}`],
-                      ).every(Boolean);
-                      return (
-                        <div
-                          key={idx}
-                          className={`border rounded-lg p-3 transition-colors ${allDone ? "border-green-300 bg-green-50" : "border-gray-200"}`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <h4 className="font-semibold text-[#1e293b] text-sm">
-                                {ex.name}
-                              </h4>
-                              <p className="text-xs text-[#64748b]">
-                                {ex.weight} • Rest {ex.rest}
-                              </p>
-                            </div>
-                            {allDone && (
-                              <span className="text-green-600 text-lg">✓</span>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            {Array.from({ length: ex.sets }, (_, s) => (
-                              <button
-                                key={s}
-                                onClick={() =>
-                                  setCompletedSets((prev) => ({
-                                    ...prev,
-                                    [`${idx}-${s}`]: !prev[`${idx}-${s}`],
-                                  }))
-                                }
-                                className={`flex-1 py-2 rounded text-xs font-medium transition-all ${completedSets[`${idx}-${s}`] ? "bg-[#d97706] text-white" : "bg-gray-100 text-[#64748b] hover:bg-gray-200"}`}
-                              >
-                                <div>Set {s + 1}</div>
-                                <div className="text-[10px] opacity-80">
-                                  {ex.reps}
-                                </div>
-                              </button>
-                            ))}
+                  {selectedWorkout.exercises && selectedWorkout.exercises.map((ex: WorkoutExercise, idx: number) => { 
+                    const allDone = Array.from({ length: ex.sets }, (_, s) => completedSets[`${idx}-${s}`]).every(Boolean); 
+                    return (
+                      <div key={idx} className={`border rounded-lg p-3 transition-colors ${allDone ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
+                            <h4 className="font-semibold text-[#1e293b] text-sm">{ex.name}</h4>
+                            <p className="text-xs text-[#64748b]">{ex.weight} • Rest {ex.rest}</p>
                           </div>
                         </div>
                       );
                     })}
                 </div>
-                {(() => {
-                  const total = selectedWorkout.exercises
-                    ? selectedWorkout.exercises.reduce(
-                        (a: number, e: any) => a + e.sets,
-                        0,
-                      )
-                    : 0;
-                  const done =
-                    Object.values(completedSets).filter(Boolean).length;
-                  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                {(() => { 
+                  const total = selectedWorkout.exercises ? selectedWorkout.exercises.reduce((a: number, e: WorkoutExercise) => a + e.sets, 0) : 0; 
+                  const done = Object.values(completedSets).filter(Boolean).length; 
+                  const pct = total > 0 ? Math.round((done / total) * 100) : 0; 
                   return (
                     <div className="mb-4">
                       <div className="flex justify-between text-xs text-[#64748b] mb-1">
@@ -1211,26 +1279,12 @@ export function HomePage() {
                   Exercises ({selectedWorkout.exercises?.length || 0})
                 </h3>
                 <div className="space-y-2 mb-6">
-                  {selectedWorkout.exercises &&
-                    selectedWorkout.exercises.map((ex: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-3 border border-gray-200 rounded-lg p-3"
-                      >
-                        <div className="w-7 h-7 bg-[#d97706] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
-                          {idx + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-[#1e293b] text-sm">
-                            {ex.name}
-                          </p>
-                          <p className="text-xs text-[#64748b]">
-                            {ex.sets} sets × {ex.reps} • {ex.weight}
-                          </p>
-                        </div>
-                        <span className="text-xs text-[#64748b] flex-shrink-0">
-                          {ex.rest}
-                        </span>
+                  {selectedWorkout.exercises && selectedWorkout.exercises.map((ex: WorkoutExercise, idx: number) => (
+                    <div key={idx} className="flex items-center gap-3 border border-gray-200 rounded-lg p-3">
+                      <div className="w-7 h-7 bg-[#d97706] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{idx + 1}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[#1e293b] text-sm">{ex.name}</p>
+                        <p className="text-xs text-[#64748b]">{ex.sets} sets × {ex.reps} • {ex.weight}</p>
                       </div>
                     ))}
                 </div>
@@ -1362,21 +1416,7 @@ export function HomePage() {
 }
 
 // Small helper component for the top stat grid
-function StatCard({
-  icon,
-  label,
-  value,
-  goal,
-  percentage,
-  unit = "",
-}: {
-  icon: any;
-  label: string;
-  value: number;
-  goal: number;
-  percentage: number;
-  unit?: string;
-}) {
+function StatCard({ icon, label, value, goal, percentage, unit = '' }: { icon: ReactNode, label: string, value: number, goal: number, percentage: number, unit?: string }) {
   return (
     <div className="bg-white rounded-lg shadow-md p-2.5 sm:p-3">
       <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
