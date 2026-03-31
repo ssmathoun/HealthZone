@@ -18,11 +18,5 @@ $userId = isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null;
 try {
     echo json_encode(get_leaderboard($connection, $userId));
 } catch (PDOException $e) {
-    echo json_encode([
-        'status'      => 'success',
-        'leaderboard' => [],
-        'my_rank'     => null,
-        'my_points'   => 0,
-        'my_username' => 'You',
-    ]);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }

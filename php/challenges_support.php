@@ -1,4 +1,6 @@
 <?php
+require "autoload.php";
+require_once "challenges_support.php";
 
 function ensure_challenges_tables(PDO $connection): void
 {
@@ -17,13 +19,16 @@ function ensure_challenges_tables(PDO $connection): void
     ");
 
     // Add points_reward column if it doesn't exist yet
-    $cols = $connection->query("SHOW COLUMNS FROM challenges LIKE 'points_reward'")->fetchAll();
-    if (empty($cols)) {
-        $connection->exec("ALTER TABLE challenges ADD COLUMN points_reward INT NOT NULL DEFAULT 100");
-        // Back-fill points for the three seeded challenges
-        $connection->exec("UPDATE challenges SET points_reward = 500 WHERE id = 1");
-        $connection->exec("UPDATE challenges SET points_reward = 150 WHERE id = 2");
-        $connection->exec("UPDATE challenges SET points_reward = 250 WHERE id = 3");
+    try {
+        $cols = $connection->query("SHOW COLUMNS FROM challenges LIKE 'points_reward'")->fetchAll();
+        if (empty($cols)) {
+            $connection->exec("ALTER TABLE challenges ADD COLUMN points_reward INT NOT NULL DEFAULT 100");
+            $connection->exec("UPDATE challenges SET points_reward = 500 WHERE id = 1");
+            $connection->exec("UPDATE challenges SET points_reward = 150 WHERE id = 2");
+            $connection->exec("UPDATE challenges SET points_reward = 250 WHERE id = 3");
+        }
+    } catch (PDOException) {
+        // Column already exists (concurrent request) — safe to ignore
     }
 
     $connection->exec("
@@ -45,9 +50,20 @@ function ensure_challenges_tables(PDO $connection): void
         CREATE TABLE IF NOT EXISTS user_points (
             user_id INT PRIMARY KEY,
             total_points INT NOT NULL DEFAULT 0,
+            is_ranked TINYINT(1) NOT NULL DEFAULT 0,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+
+    // Add is_ranked column to existing user_points tables
+    try {
+        $cols = $connection->query("SHOW COLUMNS FROM user_points LIKE 'is_ranked'")->fetchAll();
+        if (empty($cols)) {
+            $connection->exec("ALTER TABLE user_points ADD COLUMN is_ranked TINYINT(1) NOT NULL DEFAULT 0");
+        }
+    } catch (PDOException) {
+        // Column already exists — safe to ignore
+    }
 
     $challengeCount = (int) $connection->query("SELECT COUNT(*) FROM challenges")->fetchColumn();
 
@@ -73,17 +89,29 @@ function ensure_challenges_tables(PDO $connection): void
     ]);
 }
 
-function award_points(PDO $connection, int $userId, int $points): void
+function calculate_my_points(PDO $connection, int $userId): int
 {
-    if ($points <= 0) {
-        return;
-    }
     $stmt = $connection->prepare("
-        INSERT INTO user_points (user_id, total_points)
-        VALUES (:uid, :pts)
-        ON DUPLICATE KEY UPDATE total_points = total_points + :pts2
+        SELECT COALESCE(SUM(c.points_reward), 0) AS total
+        FROM user_challenges uc
+        JOIN challenges c ON c.id = uc.challenge_id
+        WHERE uc.user_id = :uid AND uc.status = 'completed'
     ");
-    $stmt->execute(['uid' => $userId, 'pts' => $points, 'pts2' => $points]);
+    $stmt->execute(['uid' => $userId]);
+    return (int) $stmt->fetch()->total;
+}
+
+function join_leaderboard(PDO $connection, int $userId): array
+{
+    ensure_challenges_tables($connection);
+    $stmt = $connection->prepare("
+        INSERT INTO user_points (user_id, total_points, is_ranked)
+        VALUES (:uid, 0, 1)
+        ON DUPLICATE KEY UPDATE is_ranked = 1
+    ");
+    $stmt->execute(['uid' => $userId]);
+    $points = calculate_my_points($connection, $userId);
+    return ['status' => 'success', 'points' => $points];
 }
 
 function build_challenge_payload(object $row): array
@@ -229,20 +257,6 @@ function increment_workout_challenge_progress(PDO $connection, int $userId, int 
         return;
     }
 
-    // Identify challenges that will reach completion with this increment (before updating)
-    $toCompleteStmt = $connection->prepare("
-        SELECT uc.challenge_id, c.points_reward
-        FROM user_challenges uc
-        JOIN challenges c ON c.id = uc.challenge_id
-        WHERE uc.user_id = :user_id
-          AND uc.status <> 'completed'
-          AND c.is_active = 1
-          AND c.metric_key = 'workouts_completed'
-          AND (uc.progress + :amount) >= c.target_value
-    ");
-    $toCompleteStmt->execute(['user_id' => $userId, 'amount' => $amount]);
-    $completingChallenges = $toCompleteStmt->fetchAll();
-
     $statement = $connection->prepare("
         UPDATE user_challenges uc
         JOIN challenges c ON c.id = uc.challenge_id
@@ -263,60 +277,77 @@ function increment_workout_challenge_progress(PDO $connection, int $userId, int 
         'status_increment'   => $amount,
         'user_id'            => $userId,
     ]);
-
-    // Award points for each challenge that just completed
-    foreach ($completingChallenges as $row) {
-        award_points($connection, $userId, (int) $row->points_reward);
-    }
 }
 
 function get_leaderboard(PDO $connection, ?int $userId): array
 {
     ensure_challenges_tables($connection);
 
+    $myPoints   = 0;
+    $myRank     = null;
+    $myIsRanked = false;
+    $myUsername = 'You';
+
+    if ($userId) {
+        $myPoints = calculate_my_points($connection, $userId);
+
+        $isRankedStmt = $connection->prepare("SELECT 1 FROM user_points WHERE user_id = :uid AND is_ranked = 1");
+        $isRankedStmt->execute(['uid' => $userId]);
+        $myIsRanked = (bool) $isRankedStmt->fetch();
+
+        $userStmt = $connection->prepare("SELECT username FROM users WHERE id = :uid");
+        $userStmt->execute(['uid' => $userId]);
+        $userRow    = $userStmt->fetch();
+        $myUsername = $userRow ? $userRow->username : 'You';
+    }
+
+    // Top 10: compute points live from completed challenges — no stale cache possible
     $top10 = $connection->query("
-        SELECT u.id, u.username, p.total_points
+        SELECT u.id, u.username,
+            COALESCE(SUM(c.points_reward), 0) AS earned_points
         FROM user_points p
         JOIN users u ON u.id = p.user_id
-        WHERE p.total_points > 0
-        ORDER BY p.total_points DESC
+        LEFT JOIN user_challenges uc ON uc.user_id = p.user_id AND uc.status = 'completed'
+        LEFT JOIN challenges c ON c.id = uc.challenge_id
+        WHERE p.is_ranked = 1
+        GROUP BY u.id, u.username
+        HAVING earned_points > 0
+        ORDER BY earned_points DESC
         LIMIT 10
     ")->fetchAll();
 
     $leaderboard = array_map(fn($row) => [
         'id'           => (int) $row->id,
         'username'     => $row->username,
-        'total_points' => (int) $row->total_points,
+        'total_points' => (int) $row->earned_points,
     ], $top10);
 
-    $myPoints   = 0;
-    $myRank     = null;
-    $myUsername = 'You';
-
-    if ($userId) {
-        $stmt = $connection->prepare("SELECT total_points FROM user_points WHERE user_id = :uid");
-        $stmt->execute(['uid' => $userId]);
-        $row = $stmt->fetch();
-        $myPoints = $row ? (int) $row->total_points : 0;
-
-        if ($myPoints > 0) {
-            $stmt = $connection->prepare("SELECT COUNT(*) + 1 AS rank FROM user_points WHERE total_points > :pts");
-            $stmt->execute(['pts' => $myPoints]);
-            $rankRow = $stmt->fetch();
-            $myRank  = $rankRow ? (int) $rankRow->rank : null;
-        }
-
-        $stmt = $connection->prepare("SELECT username FROM users WHERE id = :uid");
-        $stmt->execute(['uid' => $userId]);
-        $userRow    = $stmt->fetch();
-        $myUsername = $userRow ? $userRow->username : 'You';
+    if ($userId && $myIsRanked && $myPoints > 0) {
+        $rankStmt = $connection->prepare("
+            SELECT COUNT(*) + 1 AS user_rank
+            FROM (
+                SELECT p.user_id,
+                    COALESCE(SUM(c.points_reward), 0) AS pts
+                FROM user_points p
+                LEFT JOIN user_challenges uc ON uc.user_id = p.user_id AND uc.status = 'completed'
+                LEFT JOIN challenges c ON c.id = uc.challenge_id
+                WHERE p.is_ranked = 1
+                GROUP BY p.user_id
+            ) ranked
+            WHERE ranked.pts > :pts
+        ");
+        $rankStmt->execute(['pts' => $myPoints]);
+        $rankRow = $rankStmt->fetch();
+        // Grab the newly named user_rank property
+        $myRank  = $rankRow ? (int) $rankRow->user_rank : null; 
     }
 
     return [
-        'status'      => 'success',
-        'leaderboard' => $leaderboard,
-        'my_rank'     => $myRank,
-        'my_points'   => $myPoints,
-        'my_username' => $myUsername,
+        'status'       => 'success',
+        'leaderboard'  => $leaderboard,
+        'my_rank'      => $myRank,
+        'my_points'    => $myPoints,
+        'my_is_ranked' => $myIsRanked,
+        'my_username'  => $myUsername,
     ];
-}
+} 
