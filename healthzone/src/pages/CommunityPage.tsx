@@ -154,16 +154,16 @@ export function CommunityPage() {
       const data = await res.json();
       
       if (data.status === 'success') {
-        // Optimistically update the UI local state
+        // 1. Update the 'filled/outlined' heart state
         setLikedPosts(prev => ({ ...prev, [postId]: data.liked }));
         
-        // Update the main posts array so the number counter changes
+        // 2. Update the counter (+1 or -1) in the posts array
         setPosts(prevPosts => prevPosts.map(p => {
           if (p.id === postId) {
             return {
               ...p,
-              // If data.liked is true, we incremented. If false, we decremented.
-              likes: data.liked ? (p.likes + 1) : (p.likes - 1),
+              // If data.liked is true, user just liked it (+1). Else, they unliked it (-1).
+              likes: data.liked ? (Number(p.likes) + 1) : (Number(p.likes) - 1),
               liked_by_user: data.liked
             };
           }
@@ -171,7 +171,7 @@ export function CommunityPage() {
         }));
       }
     } catch (err) {
-      console.error("Failed to toggle like", err);
+      console.error("Like toggle failed", err);
     }
   };
 
