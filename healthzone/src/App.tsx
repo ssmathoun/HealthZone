@@ -22,9 +22,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    fetch("https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php", {
-      credentials: "include",
-    })
+    fetch(
+      "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php",
+      {
+        credentials: "include",
+      },
+    )
       .then((res) => res.json())
       .then((data) => {
         if (data.status === "success") {
@@ -34,7 +37,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {
-        const hasCookie = document.cookie.split(";").some((c) => c.trim().startsWith("PHPSESSID="));
+        const hasCookie = document.cookie
+          .split(";")
+          .some((c) => c.trim().startsWith("PHPSESSID="));
         setAuthenticated(hasCookie);
       })
       .finally(() => setChecking(false));
@@ -60,7 +65,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const isMobile = useIsMobile();
-  
+
   return (
     <HashRouter>
       <Routes>
@@ -74,9 +79,9 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
-                <Route 
-                  path="/profile" 
-                  element={isMobile ? <ProfilePageMobile /> : <ProfilePage />} 
+                <Route
+                  path="/profile"
+                  element={isMobile ? <ProfilePageMobile /> : <ProfilePage />}
                 />
                 <Route path="/workouts" element={<WorkoutsPage />} />
                 <Route path="/recipes" element={<RecipesPage />} />
@@ -88,6 +93,7 @@ export default function App() {
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/sleep" element={<SleepPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/weight-tracker" element={<WeightTrackerPage />} />
                 <Route path="/log-workout" element={<WorkoutsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
