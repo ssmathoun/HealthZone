@@ -53,6 +53,11 @@ try {
         exit;
     }
 
+    if ($method === 'POST' && $action === 'join_leaderboard') {
+        echo json_encode(join_leaderboard($connection, $userId));
+        exit;
+    }
+
     echo json_encode([
         'status' => 'error',
         'message' => 'Invalid action specified.',
