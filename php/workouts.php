@@ -28,7 +28,6 @@ try {
     // ========================================================================
     if ($method === 'GET' && $action === 'get_premade_workouts') {
         
-        // Fetch workouts created by ANY trainer OR created by THIS specific user
         $query = "
         SELECT w.id, w.name, w.difficulty, w.duration_min as duration, w.calories_burned as calories, 
                u.username as trainer,
@@ -40,18 +39,23 @@ try {
         ";
         $stm = $connection->prepare($query);
         $stm->execute(['user_id' => $current_user_id]);
-        $workouts = $stm->fetchAll(); // Returns objects due to PDO::FETCH_OBJ in your autoload.php
+        
+        // Force fetch as associative array to be safe
+        $workouts = $stm->fetchAll(PDO::FETCH_ASSOC); 
 
-        // Loop through each workout to attach its exercises
-        foreach ($workouts as $workout) {
+        // Use a standard loop index to avoid reference (&) syntax errors
+        for ($i = 0; $i < count($workouts); $i++) {
+            $workoutId = $workouts[$i]['id'];
+            
             $exQuery = "SELECT name, sets, reps, rest_time as rest, weight FROM workout_exercises WHERE workout_id = :workout_id";
             $exStm = $connection->prepare($exQuery);
-            $exStm->execute(['workout_id' => $workout->id]);
+            $exStm->execute(['workout_id' => $workoutId]);
             
-            $workout->exercises = $exStm->fetchAll();
+            $workouts[$i]['exercises'] = $exStm->fetchAll(PDO::FETCH_ASSOC);
+            $workouts[$i]['muscleGroups'] = ["Full Body"]; 
             
-            // Add mock muscle groups array so your React frontend maps over it without crashing
-            $workout->muscleGroups = ["Full Body"]; 
+            // Ensure is_favorite is a boolean for React
+            $workouts[$i]['is_favorite'] = (bool)$workouts[$i]['is_favorite'];
         }
         
         echo json_encode($workouts);
@@ -150,10 +154,10 @@ try {
     
         $check = $connection->prepare("SELECT id FROM workout_favorites WHERE user_id = :uid AND workout_id = :wid");
         $check->execute(['uid' => $current_user_id, 'wid' => $workout_id]);
-        $existing = $check->fetch();
+        $existing = $check->fetch(PDO::FETCH_ASSOC); // Fetch as array
     
         if ($existing) {
-            $connection->prepare("DELETE FROM workout_favorites WHERE id = :id")->execute(['id' => $existing->id]);
+            $connection->prepare("DELETE FROM workout_favorites WHERE id = :id")->execute(['id' => $existing['id']]);
             $fav = false;
         } else {
             $connection->prepare("INSERT INTO workout_favorites (user_id, workout_id) VALUES (:uid, :wid)")->execute(['uid' => $current_user_id, 'wid' => $workout_id]);
