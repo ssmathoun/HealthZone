@@ -30,12 +30,13 @@ try {
         
         // Fetch workouts created by ANY trainer OR created by THIS specific user
         $query = "
-            SELECT w.id, w.name, w.difficulty, w.duration_min as duration, w.calories_burned as calories, 
-                   u.username as trainer 
-            FROM workouts w
-            JOIN users u ON w.trainer_id = u.id
-            WHERE u.role = 'trainer' OR w.trainer_id = :user_id
-            ORDER BY w.id DESC
+        SELECT w.id, w.name, w.difficulty, w.duration_min as duration, w.calories_burned as calories, 
+               u.username as trainer,
+               EXISTS(SELECT 1 FROM workout_favorites f WHERE f.workout_id = w.id AND f.user_id = :user_id) as is_favorite
+        FROM workouts w
+        JOIN users u ON w.trainer_id = u.id
+        WHERE u.role = 'trainer' OR w.trainer_id = :user_id
+        ORDER BY w.id DESC
         ";
         $stm = $connection->prepare($query);
         $stm->execute(['user_id' => $current_user_id]);
@@ -140,6 +141,25 @@ try {
             $connection->rollBack();
             echo json_encode(["status" => "error", "message" => "Failed to log workout."]);
         }
+        exit;
+    }
+
+    if ($method === 'POST' && $action === 'toggle_favorite') {
+        $workout_id = $data['workout_id'] ?? null;
+        if (!$workout_id) { echo json_encode(["status" => "error", "message" => "ID required"]); exit; }
+    
+        $check = $connection->prepare("SELECT id FROM workout_favorites WHERE user_id = :uid AND workout_id = :wid");
+        $check->execute(['uid' => $current_user_id, 'wid' => $workout_id]);
+        $existing = $check->fetch();
+    
+        if ($existing) {
+            $connection->prepare("DELETE FROM workout_favorites WHERE id = :id")->execute(['id' => $existing->id]);
+            $fav = false;
+        } else {
+            $connection->prepare("INSERT INTO workout_favorites (user_id, workout_id) VALUES (:uid, :wid)")->execute(['uid' => $current_user_id, 'wid' => $workout_id]);
+            $fav = true;
+        }
+        echo json_encode(["status" => "success", "is_favorite" => $fav]);
         exit;
     }
 
