@@ -168,7 +168,7 @@ export function WorkoutsPage() {
                         title={w.is_favorite ? "Unfavorite" : "Favorite"}
                       >
                         <Heart 
-                          className={`size-5 transition-colors ${w.is_favorite ? 'fill-red-500 text-red-500' : 'text-gray-300'}`} 
+                          className={`size-5 transition-colors ${w.is_favorite ? 'fill-[#d97706] text-[#d97706]' : 'text-gray-300'}`} 
                         />
                       </button>
 
