@@ -546,6 +546,13 @@ export function HomePage() {
               <MessageCircle className="size-6" />
               <span className="text-xs font-medium">Forum</span>
             </button>
+            <button
+              onClick={() => navigate("/weight-tracker")}
+              className="bg-[#1e293b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+            >
+              <Scale className="size-6" />
+              <span className="text-xs font-medium">Weight Tracker</span>
+            </button>
           </div>
         </div>
         {/* Today's Meals */}
