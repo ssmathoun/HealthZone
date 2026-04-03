@@ -41,10 +41,10 @@ export function HomePage() {
   const [selectedTrainer, setSelectedTrainer] = useState<any>(null);
 
   // =========================================================================
-  // NUTRITION & SLEEP STATS (TODAY) — fetched from backend
+  // NUTRITION STATS (TODAY) — fetched from backend
   // =========================================================================
-  const NUTRITION_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/nutrition_today.php";
-  const SLEEP_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/sleep.php";
+  const NUTRITION_URL =
+    "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/nutrition_today.php";
 
   type NutritionToday = {
     goals: { calories: number; protein: number; carbs: number; fat: number };
@@ -54,7 +54,6 @@ export function HomePage() {
 
   const [nutrition, setNutrition] = useState<NutritionToday | null>(null);
   const [nutritionLoading, setNutritionLoading] = useState(true);
-  const [latestSleep, setLatestSleep] = useState<number>(0);
 
   // Sleep tracking
   const SLEEP_URL =
@@ -155,15 +154,6 @@ export function HomePage() {
       })
       .catch(() => {});
 
-    // Fetch Latest Sleep Log
-    fetch(`${SLEEP_URL}?action=get_latest`, { credentials: 'include' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && typeof data.hours === 'number') {
-          setLatestSleep(data.hours);
-        }
-      })
-      .catch(() => console.error("Could not load sleep data"));
     // Fetch latest sleep log
     fetch(`${SLEEP_URL}?action=get_history`, { credentials: "include" })
       .then((res) => res.json())
@@ -521,10 +511,6 @@ export function HomePage() {
               <UtensilsCrossed className="size-6" />
               <span className="text-xs font-medium">Log Meal</span>
             </button>
-            {/* Replaced Create Recipe with Log Sleep for Quick Actions */}
-            <button onClick={() => navigate('/sleep')} className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity">
-              <Moon className="size-6 text-[#d97706]" />
-              <span className="text-xs font-medium">Log Sleep</span>
             <button
               onClick={() => navigate("/create-recipe")}
               className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"

@@ -6,6 +6,8 @@ import { WorkoutsPage } from "./pages/WorkoutsPage";
 import { RecipesPage } from "./pages/RecipesPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { CommunityPage } from "./pages/CommunityPage";
+import { SettingsPage } from "./pages/SettingsPage";
+import { WeightTrackerPage } from "./pages/WeightTrackerPage";
 
 export const router = createBrowserRouter(
   [
@@ -36,6 +38,14 @@ export const router = createBrowserRouter(
     {
       path: "/community",
       Component: CommunityPage,
+    },
+    {
+      path: "/settings",
+      Component: SettingsPage,
+    },
+    {
+      path: "/weight-tracker",
+      Component: WeightTrackerPage,
     },
   ],
   {

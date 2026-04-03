@@ -15,11 +15,11 @@ import { SleepPage } from "./pages/SleepPage";
 import { RestTimerPage } from "./pages/RestTimerPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { WeightTrackerPage } from "./pages/WeightTrackerPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { GlobalRestTimerButton } from "./components/GlobalRestTimerButton";
 import { RestTimerProvider } from "./components/RestTimerProvider";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
-import { SleepPage } from "./pages/SleepPage";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
@@ -101,6 +101,7 @@ export default function App() {
                   <Route path="/rest-timer" element={<RestTimerPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/weight-tracker" element={<WeightTrackerPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/log-workout" element={<WorkoutsPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
