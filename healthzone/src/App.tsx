@@ -19,6 +19,7 @@ import { GlobalRestTimerButton } from "./components/GlobalRestTimerButton";
 import { RestTimerProvider } from "./components/RestTimerProvider";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
+import { SleepPage } from "./pages/SleepPage";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
