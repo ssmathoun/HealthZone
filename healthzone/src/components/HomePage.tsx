@@ -13,12 +13,10 @@ import {
   Scale,
   Bell,
   BookOpen,
-  Users,
   Trophy,
   Calendar,
   ArrowLeft,
   X,
-  Flame,
   MessageCircle,
   MapPin,
   Star,
@@ -41,10 +39,12 @@ export function HomePage() {
   const [selectedTrainer, setSelectedTrainer] = useState<any>(null);
 
   // =========================================================================
-  // NUTRITION STATS (TODAY) — fetched from backend
+  // NUTRITION & SLEEP STATS (TODAY) — fetched from backend
   // =========================================================================
   const NUTRITION_URL =
     "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/nutrition_today.php";
+  const SLEEP_URL =
+    "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/sleep.php";
 
   type NutritionToday = {
     goals: { calories: number; protein: number; carbs: number; fat: number };
@@ -54,10 +54,6 @@ export function HomePage() {
 
   const [nutrition, setNutrition] = useState<NutritionToday | null>(null);
   const [nutritionLoading, setNutritionLoading] = useState(true);
-
-  // Sleep tracking
-  const SLEEP_URL =
-    "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/sleep.php";
   const [latestSleep, setLatestSleep] = useState<number>(0);
   const [latestWeight, setLatestWeight] = useState<number | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -121,6 +117,7 @@ export function HomePage() {
   useEffect(() => {
     fetch(
       "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_premade_workouts",
+      { credentials: "include" },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -154,12 +151,12 @@ export function HomePage() {
       })
       .catch(() => {});
 
-    // Fetch latest sleep log
-    fetch(`${SLEEP_URL}?action=get_history`, { credentials: "include" })
+    // Fetch Latest Sleep Log
+    fetch(`${SLEEP_URL}?action=get_latest`, { credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setLatestSleep(Number(data[0].hours));
+        if (data && typeof data.hours === "number") {
+          setLatestSleep(data.hours);
         }
       })
       .catch(() => {});
@@ -511,6 +508,14 @@ export function HomePage() {
               <UtensilsCrossed className="size-6" />
               <span className="text-xs font-medium">Log Meal</span>
             </button>
+            {/* Replaced Create Recipe with Log Sleep for Quick Actions */}
+            <button
+              onClick={() => navigate("/sleep")}
+              className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+            >
+              <Moon className="size-6 text-[#d97706]" />
+              <span className="text-xs font-medium">Log Sleep</span>
+            </button>
             <button
               onClick={() => navigate("/create-recipe")}
               className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
@@ -686,16 +691,21 @@ export function HomePage() {
             <div className="space-y-2 mb-3">
               {leaderboard.map((entry, idx) => {
                 const medals = ["🥇", "🥈", "🥉"];
+                const isMe = myIsRanked && entry.username === myUsername;
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-center justify-between p-2 rounded-lg"
+                    className={`flex items-center justify-between p-2 rounded-lg ${isMe ? "bg-[#d97706]/10 border border-[#d97706]/30" : ""}`}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-sm w-6">
+                      <span
+                        className={`text-sm w-6 ${isMe ? "text-[#d97706] font-bold" : ""}`}
+                      >
                         {medals[idx] || `#${idx + 1}`}
                       </span>
-                      <span className="text-sm text-[#1e293b]">
+                      <span
+                        className={`text-sm ${isMe ? "font-bold text-[#d97706]" : "text-[#1e293b]"}`}
+                      >
                         {entry.username}
                       </span>
                     </div>
@@ -708,19 +718,23 @@ export function HomePage() {
             </div>
           )}
           <div className="border-t border-gray-100 pt-3">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-[#d97706]/10 border border-[#d97706]/30">
-              <div className="flex items-center gap-2">
-                <span className="text-sm w-6 text-[#d97706] font-bold">
-                  {myRank !== null ? `#${myRank}` : "—"}
-                </span>
-                <span className="text-sm font-bold text-[#d97706]">
-                  {myUsername}
+            {myIsRanked &&
+            myRank !== null &&
+            myRank <= leaderboard.length ? null : (
+              <div className="flex items-center justify-between p-2 rounded-lg bg-[#d97706]/10 border border-[#d97706]/30">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm w-6 text-[#d97706] font-bold">
+                    {myRank !== null ? `#${myRank}` : "—"}
+                  </span>
+                  <span className="text-sm font-bold text-[#d97706]">
+                    {myUsername}
+                  </span>
+                </div>
+                <span className="text-sm font-semibold text-[#64748b]">
+                  {myPoints.toLocaleString()} pts
                 </span>
               </div>
-              <span className="text-sm font-semibold text-[#64748b]">
-                {myPoints.toLocaleString()} pts
-              </span>
-            </div>
+            )}
             {!myIsRanked && (
               <button
                 onClick={handleJoinLeaderboard}
