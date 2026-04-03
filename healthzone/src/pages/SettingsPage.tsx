@@ -19,6 +19,26 @@ export function SettingsPage() {
   const [exportMessage, setExportMessage] = useState("");
   const [exportError, setExportError] = useState(false);
 
+  const formatDateTime = (raw: unknown): string => {
+    if (!raw) return "N/A";
+    const d = new Date(String(raw).replace(" ", "T") + "Z");
+    if (isNaN(d.getTime())) return String(raw);
+    return (
+      d.toLocaleDateString("en-US", {
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }) +
+      " at " +
+      d.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    );
+  };
+
   const formatActivityLogs = (logs: Record<string, unknown>): string => {
     const lines: string[] = [];
     const divider = "=".repeat(60);
@@ -58,7 +78,8 @@ export function SettingsPage() {
         lines.push(`   Difficulty : ${w.difficulty}`);
         lines.push(`   Duration   : ${w.duration_min} min`);
         lines.push(`   Calories   : ${w.calories_burned} kcal`);
-        if (w.completed_at) lines.push(`   Date       : ${w.completed_at}`);
+        if (w.completed_at)
+          lines.push(`   Date       : ${formatDateTime(w.completed_at)}`);
       });
     } else {
       lines.push("No workouts logged.");
@@ -75,7 +96,7 @@ export function SettingsPage() {
         lines.push(
           `   Calories : ${m.calories} kcal | Protein: ${m.protein}g | Carbs: ${m.carbs}g | Fat: ${m.fat}g`,
         );
-        lines.push(`   Date     : ${m.logged_at}`);
+        lines.push(`   Date     : ${formatDateTime(m.logged_at)}`);
       });
     } else {
       lines.push("No meals logged.");
@@ -88,7 +109,9 @@ export function SettingsPage() {
     lines.push(subDivider);
     if (weight?.length) {
       weight.forEach((w, i) => {
-        lines.push(`${i + 1}. ${w.weight_lbs} lbs  —  ${w.logged_at}`);
+        lines.push(
+          `${i + 1}. ${w.weight_lbs} lbs  —  ${formatDateTime(w.logged_at)}`,
+        );
       });
     } else {
       lines.push("No weight entries logged.");
@@ -104,7 +127,9 @@ export function SettingsPage() {
         const h = parseFloat(String(s.hours ?? 0));
         const hrs = Math.floor(h);
         const mins = Math.round((h - hrs) * 60);
-        lines.push(`${i + 1}. ${hrs}h ${mins}m  —  ${s.created_at}`);
+        lines.push(
+          `${i + 1}. ${hrs}h ${mins}m  —  ${formatDateTime(s.created_at)}`,
+        );
       });
     } else {
       lines.push("No sleep entries logged.");
@@ -120,7 +145,7 @@ export function SettingsPage() {
         const secs = Number(r.duration_seconds ?? 0);
         const m = Math.floor(secs / 60);
         const s = secs % 60;
-        lines.push(`${i + 1}. ${m}m ${s}s  —  ${r.created_at}`);
+        lines.push(`${i + 1}. ${m}m ${s}s  —  ${formatDateTime(r.created_at)}`);
       });
     } else {
       lines.push("No rest timer sessions logged.");
@@ -138,7 +163,7 @@ export function SettingsPage() {
           `   Calories : ${r.calories} kcal | Protein: ${r.protein}g | Carbs: ${r.carbs}g | Fat: ${r.fat}g`,
         );
         lines.push(`   Prep Time: ${r.prep_time}  |  Servings: ${r.servings}`);
-        lines.push(`   Created  : ${r.created_at}`);
+        lines.push(`   Created  : ${formatDateTime(r.created_at)}`);
       });
     } else {
       lines.push("No recipes saved.");
@@ -156,7 +181,7 @@ export function SettingsPage() {
           `   Progress : ${c.progress} / ${c.target_value} ${c.unit_label}`,
         );
         lines.push(`   Points   : ${c.points_reward}`);
-        lines.push(`   Joined   : ${c.joined_at}`);
+        lines.push(`   Joined   : ${formatDateTime(c.joined_at)}`);
       });
     } else {
       lines.push("No challenges joined.");
@@ -170,7 +195,7 @@ export function SettingsPage() {
     if (scheduled?.length) {
       scheduled.forEach((s, i) => {
         lines.push(
-          `${i + 1}. ${s.name} (${s.difficulty})  —  ${s.scheduled_date}`,
+          `${i + 1}. ${s.name} (${s.difficulty})  —  ${formatDateTime(s.scheduled_date)}`,
         );
       });
     } else {
