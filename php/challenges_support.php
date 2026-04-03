@@ -288,6 +288,8 @@ function get_leaderboard(PDO $connection, ?int $userId): array
     $myIsRanked = false;
     $myUsername = 'You';
 
+    $myLastCompleted = '9999-12-31 23:59:59';
+
     if ($userId) {
         $myPoints = calculate_my_points($connection, $userId);
 
@@ -299,12 +301,23 @@ function get_leaderboard(PDO $connection, ?int $userId): array
         $userStmt->execute(['uid' => $userId]);
         $userRow    = $userStmt->fetch();
         $myUsername = $userRow ? $userRow->username : 'You';
+
+        // Tiebreaker: earliest last-completed timestamp wins
+        $lcStmt = $connection->prepare("
+            SELECT COALESCE(MAX(updated_at), '9999-12-31 23:59:59') AS last_completed
+            FROM user_challenges
+            WHERE user_id = :uid AND status = 'completed'
+        ");
+        $lcStmt->execute(['uid' => $userId]);
+        $lcRow = $lcStmt->fetch();
+        if ($lcRow) $myLastCompleted = $lcRow->last_completed;
     }
 
-    // Top 10: compute points live from completed challenges — no stale cache possible
+    // Top 10: points DESC, then earliest last-completed ASC as tiebreaker
     $top10 = $connection->query("
         SELECT u.id, u.username,
-            COALESCE(SUM(c.points_reward), 0) AS earned_points
+            COALESCE(SUM(c.points_reward), 0) AS earned_points,
+            COALESCE(MAX(uc.updated_at), '9999-12-31 23:59:59') AS last_completed
         FROM user_points p
         JOIN users u ON u.id = p.user_id
         LEFT JOIN user_challenges uc ON uc.user_id = p.user_id AND uc.status = 'completed'
@@ -312,7 +325,7 @@ function get_leaderboard(PDO $connection, ?int $userId): array
         WHERE p.is_ranked = 1
         GROUP BY u.id, u.username
         HAVING earned_points > 0
-        ORDER BY earned_points DESC
+        ORDER BY earned_points DESC, last_completed ASC
         LIMIT 10
     ")->fetchAll();
 
@@ -322,12 +335,14 @@ function get_leaderboard(PDO $connection, ?int $userId): array
         'total_points' => (int) $row->earned_points,
     ], $top10);
 
-    if ($userId && $myIsRanked && $myPoints > 0) {
+    if ($userId && $myIsRanked) {
+        // Count users strictly ahead: more points, OR equal points but finished earlier
         $rankStmt = $connection->prepare("
             SELECT COUNT(*) + 1 AS user_rank
             FROM (
                 SELECT p.user_id,
-                    COALESCE(SUM(c.points_reward), 0) AS pts
+                    COALESCE(SUM(c.points_reward), 0) AS pts,
+                    COALESCE(MAX(uc.updated_at), '9999-12-31 23:59:59') AS last_completed
                 FROM user_points p
                 LEFT JOIN user_challenges uc ON uc.user_id = p.user_id AND uc.status = 'completed'
                 LEFT JOIN challenges c ON c.id = uc.challenge_id
@@ -335,11 +350,15 @@ function get_leaderboard(PDO $connection, ?int $userId): array
                 GROUP BY p.user_id
             ) ranked
             WHERE ranked.pts > :pts
+               OR (ranked.pts = :pts2 AND ranked.last_completed < :last_completed)
         ");
-        $rankStmt->execute(['pts' => $myPoints]);
+        $rankStmt->execute([
+            'pts'            => $myPoints,
+            'pts2'           => $myPoints,
+            'last_completed' => $myLastCompleted,
+        ]);
         $rankRow = $rankStmt->fetch();
-        // Grab the newly named user_rank property
-        $myRank  = $rankRow ? (int) $rankRow->user_rank : null; 
+        $myRank  = $rankRow ? (int) $rankRow->user_rank : null;
     }
 
     return [

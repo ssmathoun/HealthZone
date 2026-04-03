@@ -12,6 +12,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
+// Convert a timestamp string to EST (America/New_York handles DST automatically).
+// Uses the MySQL/PHP server timezone as the source so all columns are treated consistently.
+function toEST(?string $ts): ?string {
+    if ($ts === null || $ts === '') return $ts;
+    try {
+        $dt = new DateTime($ts);
+        $dt->setTimezone(new DateTimeZone('America/New_York'));
+        return $dt->format('Y-m-d H:i:s') . ' EST';
+    } catch (Exception) {
+        return $ts;
+    }
+}
+
+// Apply toEST to a list of rows for the given timestamp fields
+function convertRowsToEST(array $rows, array $fields): array {
+    foreach ($rows as &$row) {
+        foreach ($fields as $field) {
+            if (array_key_exists($field, $row)) {
+                $row[$field] = toEST($row[$field]);
+            }
+        }
+    }
+    return $rows;
+}
+
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     echo json_encode(["status" => "error", "message" => "Not logged in"]);
@@ -40,7 +65,7 @@ try {
             ORDER BY uwl.completed_at DESC
         ");
         $stmt->execute([':uid' => $userId]);
-        $logs['workouts'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $logs['workouts'] = convertRowsToEST($stmt->fetchAll(PDO::FETCH_ASSOC), ['completed_at']);
     } catch (PDOException $e) {
         // Try without completed_at column (older schema)
         try {
@@ -67,7 +92,7 @@ try {
             ORDER BY logged_at DESC
         ");
         $stmt->execute([':uid' => $userId]);
-        $logs['meals'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $logs['meals'] = convertRowsToEST($stmt->fetchAll(PDO::FETCH_ASSOC), ['logged_at']);
     } catch (PDOException $e) {
         $logs['meals'] = [];
     }
@@ -81,7 +106,7 @@ try {
             ORDER BY logged_at DESC
         ");
         $stmt->execute([':uid' => $userId]);
-        $logs['weight'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $logs['weight'] = convertRowsToEST($stmt->fetchAll(PDO::FETCH_ASSOC), ['logged_at']);
     } catch (PDOException $e) {
         $logs['weight'] = [];
     }
@@ -95,7 +120,7 @@ try {
             ORDER BY created_at DESC
         ");
         $stmt->execute([':uid' => $userId]);
-        $logs['sleep'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $logs['sleep'] = convertRowsToEST($stmt->fetchAll(PDO::FETCH_ASSOC), ['created_at']);
     } catch (PDOException $e) {
         $logs['sleep'] = [];
     }
@@ -109,7 +134,7 @@ try {
             ORDER BY created_at DESC
         ");
         $stmt->execute([':uid' => $userId]);
-        $logs['rest_timer'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $logs['rest_timer'] = convertRowsToEST($stmt->fetchAll(PDO::FETCH_ASSOC), ['created_at']);
     } catch (PDOException $e) {
         $logs['rest_timer'] = [];
     }
@@ -123,7 +148,7 @@ try {
             ORDER BY created_at DESC
         ");
         $stmt->execute([':uid' => $userId]);
-        $logs['recipes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $logs['recipes'] = convertRowsToEST($stmt->fetchAll(PDO::FETCH_ASSOC), ['created_at']);
     } catch (PDOException $e) {
         $logs['recipes'] = [];
     }
@@ -139,7 +164,7 @@ try {
             ORDER BY uc.joined_at DESC
         ");
         $stmt->execute([':uid' => $userId]);
-        $logs['challenges'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $logs['challenges'] = convertRowsToEST($stmt->fetchAll(PDO::FETCH_ASSOC), ['joined_at', 'updated_at']);
     } catch (PDOException $e) {
         $logs['challenges'] = [];
     }
