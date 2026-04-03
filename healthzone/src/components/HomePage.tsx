@@ -13,10 +13,12 @@ import {
   Scale,
   Bell,
   BookOpen,
+  Users,
   Trophy,
   Calendar,
   ArrowLeft,
   X,
+  Flame,
   MessageCircle,
   MapPin,
   Star,
@@ -120,7 +122,6 @@ export function HomePage() {
   useEffect(() => {
     fetch(
       "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_premade_workouts",
-      { credentials: "include" },
     )
       .then((res) => res.json())
       .then((data) => {
@@ -167,8 +168,8 @@ export function HomePage() {
     fetch(`${SLEEP_URL}?action=get_history`, { credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
-        if (data && typeof data.hours === "number") {
-          setLatestSleep(data.hours);
+        if (Array.isArray(data) && data.length > 0) {
+          setLatestSleep(Number(data[0].hours));
         }
       })
       .catch(() => {});
@@ -699,21 +700,16 @@ export function HomePage() {
             <div className="space-y-2 mb-3">
               {leaderboard.map((entry, idx) => {
                 const medals = ["🥇", "🥈", "🥉"];
-                const isMe = myIsRanked && entry.username === myUsername;
                 return (
                   <div
                     key={entry.id}
-                    className={`flex items-center justify-between p-2 rounded-lg ${isMe ? "bg-[#d97706]/10 border border-[#d97706]/30" : ""}`}
+                    className="flex items-center justify-between p-2 rounded-lg"
                   >
                     <div className="flex items-center gap-2">
-                      <span
-                        className={`text-sm w-6 ${isMe ? "text-[#d97706] font-bold" : ""}`}
-                      >
+                      <span className="text-sm w-6">
                         {medals[idx] || `#${idx + 1}`}
                       </span>
-                      <span
-                        className={`text-sm ${isMe ? "font-bold text-[#d97706]" : "text-[#1e293b]"}`}
-                      >
+                      <span className="text-sm text-[#1e293b]">
                         {entry.username}
                       </span>
                     </div>
@@ -726,23 +722,19 @@ export function HomePage() {
             </div>
           )}
           <div className="border-t border-gray-100 pt-3">
-            {myIsRanked &&
-            myRank !== null &&
-            myRank <= leaderboard.length ? null : (
-              <div className="flex items-center justify-between p-2 rounded-lg bg-[#d97706]/10 border border-[#d97706]/30">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm w-6 text-[#d97706] font-bold">
-                    {myRank !== null ? `#${myRank}` : "—"}
-                  </span>
-                  <span className="text-sm font-bold text-[#d97706]">
-                    {myUsername}
-                  </span>
-                </div>
-                <span className="text-sm font-semibold text-[#64748b]">
-                  {myPoints.toLocaleString()} pts
+            <div className="flex items-center justify-between p-2 rounded-lg bg-[#d97706]/10 border border-[#d97706]/30">
+              <div className="flex items-center gap-2">
+                <span className="text-sm w-6 text-[#d97706] font-bold">
+                  {myRank !== null ? `#${myRank}` : "—"}
+                </span>
+                <span className="text-sm font-bold text-[#d97706]">
+                  {myUsername}
                 </span>
               </div>
-            )}
+              <span className="text-sm font-semibold text-[#64748b]">
+                {myPoints.toLocaleString()} pts
+              </span>
+            </div>
             {!myIsRanked && (
               <button
                 onClick={handleJoinLeaderboard}
