@@ -144,12 +144,13 @@ try {
         $logs['challenges'] = [];
     }
 
-    // ── Points ───────────────────────────────────────────────────────────────
+    // ── Points (computed live from completed challenges, same as leaderboard) ──
     try {
         $stmt = $connection->prepare("
-            SELECT total_points, updated_at
-            FROM user_points
-            WHERE user_id = :uid
+            SELECT COALESCE(SUM(c.points_reward), 0) AS total_points
+            FROM user_challenges uc
+            JOIN challenges c ON c.id = uc.challenge_id
+            WHERE uc.user_id = :uid AND uc.status = 'completed'
         ");
         $stmt->execute([':uid' => $userId]);
         $logs['points'] = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['total_points' => 0];
