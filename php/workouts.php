@@ -98,43 +98,6 @@ try {
         exit;
     }
 
-    if ($method === 'GET' && $action === 'get_workout_history') {
-        $stmt = $connection->prepare("
-            SELECT uwl.id, w.name, w.difficulty, w.duration_min AS duration,
-                   w.calories_burned AS calories, u.username AS trainer,
-                   uwl.completed_at,
-                   (SELECT COUNT(*) FROM workout_exercises we WHERE we.workout_id = w.id) AS exercise_count
-            FROM user_workout_logs uwl
-            JOIN workouts w ON uwl.workout_id = w.id
-            JOIN users u ON w.trainer_id = u.id
-            WHERE uwl.user_id = :uid
-            ORDER BY uwl.completed_at DESC
-        ");
-        $stmt->execute([':uid' => $current_user_id]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $now = new DateTime();
-        $result = array_map(function($row) use ($now) {
-            $row['muscleGroups'] = ['Full Body'];
-            $row['exercises'] = (int) $row['exercise_count'];
-            unset($row['exercise_count']);
-
-            if ($row['completed_at']) {
-                $dt = new DateTime($row['completed_at']);
-                $diff = (int) $now->diff($dt)->days;
-                if ($diff === 0) $row['date'] = 'Today';
-                elseif ($diff === 1) $row['date'] = 'Yesterday';
-                else $row['date'] = $diff . ' days ago';
-            } else {
-                $row['date'] = '';
-            }
-            return $row;
-        }, $rows);
-
-        echo json_encode($result);
-        exit;
-    }
-
     if ($method === 'POST' && $action === 'finish_workout') {
         $workout_id = $data['workout_id'] ?? null;
 
@@ -191,3 +154,4 @@ try {
     }
     echo json_encode(["status" => "error", "message" => $e->getMessage()]);
 }
+?>
