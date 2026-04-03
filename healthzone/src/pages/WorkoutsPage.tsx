@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, Clock, ArrowLeft, X, Trophy, Flame, Star, ChevronRight, Filter } from 'lucide-react';
+import { Dumbbell, Clock, ArrowLeft, X, Trophy, Flame, Star, ChevronRight, Filter, Heart } from 'lucide-react';
 
 export function WorkoutsPage() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export function WorkoutsPage() {
 
   const [showSortModal, setShowSortModal] = useState(false);
   const [sortBy, setSortBy] = useState('date'); // 'date', 'calories', 'duration', 'exercises'
-  const [filterBy, setFilterBy] = useState('All'); // 'All', 'Beginner-Friendly', 'Intermediate', 'Advanced'
+  const [filterBy, setFilterBy] = useState('All');
   
   const [completedWorkouts, setCompletedWorkouts] = useState<any[]>([
     { id: 1, name: 'Push Day Power', trainer: 'Coach Sarah Miller', exercises: 8, duration: '45 min', calories: 320, date: 'Today', muscleGroups: ['Chest', 'Shoulders', 'Triceps'] },
@@ -27,7 +27,9 @@ export function WorkoutsPage() {
   const totalMinutes = completedWorkouts.reduce((sum, w) => sum + parseInt(w.duration), 0);
 
   useEffect(() => {
-    fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_premade_workouts')
+    fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_premade_workouts', {
+      credentials: 'include'
+    })
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -38,13 +40,35 @@ export function WorkoutsPage() {
   }, []);
 
   const processedWorkouts = [...trainerWorkouts]
-    .filter((w) => filterBy === 'All' || w.difficulty === filterBy)
-    .sort((a, b) => {
-      if (sortBy === 'calories') return b.calories - a.calories; // Non-increasing
-      if (sortBy === 'duration') return b.duration - a.duration; // Non-increasing
-      if (sortBy === 'exercises') return (b.exercises?.length || 0) - (a.exercises?.length || 0); // Non-increasing
-      return b.id - a.id; // Date Added (latest ID = newest)
-    });
+  .filter((w) => {
+    if (filterBy === 'All') return true;
+    if (filterBy === 'Favorites') return !!w.is_favorite; // Filter for test #1 step 5
+    return w.difficulty === filterBy;
+  })
+  .sort((a, b) => {
+    if (sortBy === 'calories') return b.calories - a.calories;
+    if (sortBy === 'duration') return b.duration - a.duration;
+    if (sortBy === 'exercises') return (b.exercises?.length || 0) - (a.exercises?.length || 0);
+    return b.id - a.id;
+  });
+
+  const handleToggleFavorite = async (e: React.MouseEvent, workoutId: number) => {
+    e.stopPropagation(); // Prevent opening the workout modal
+      try {
+        const res = await fetch('https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=toggle_favorite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ workout_id: workoutId })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          setTrainerWorkouts(prev => prev.map(w => 
+            w.id === workoutId ? { ...w, is_favorite: data.is_favorite } : w
+          ));
+        }
+      } catch (err) { console.error(err); }
+  };
 
   const getSortLabel = () => {
     if (sortBy === 'date') return 'Date Added';
@@ -132,30 +156,44 @@ export function WorkoutsPage() {
                 </button>
               </div>
 
-              {/* RENDER PROCESSED WORKOUTS INSTEAD OF ALL WORKOUTS */}
               <div className="space-y-3">
                 {processedWorkouts.length === 0 ? (
                   <p className="text-center text-[#64748b] py-8">No workouts match your filters.</p>
                 ) : (
                   processedWorkouts.map((w) => (
-                    <div key={w.id} onClick={() => setSelectedWorkout(w)} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg hover:border-[#d97706] border border-transparent transition-all cursor-pointer">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-[#1e293b]">{w.name}</h3>
-                          <p className="text-xs text-[#64748b] mt-0.5">by {w.trainer}</p>
+                    <div key={w.id} className="relative group"> 
+                      <button 
+                        onClick={(e) => handleToggleFavorite(e, w.id)}
+                        className="absolute top-3 right-3 z-30 p-2 bg-white rounded-full shadow-md border border-gray-100 hover:scale-110 transition-all active:scale-95"
+                        title={w.is_favorite ? "Unfavorite" : "Favorite"}
+                      >
+                        <Heart 
+                          className={`size-5 transition-colors ${w.is_favorite ? 'fill-[#d97706] text-[#d97706]' : 'text-gray-300'}`} 
+                        />
+                      </button>
+
+                      <div 
+                        onClick={() => setSelectedWorkout(w)} 
+                        className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg hover:border-[#d97706] border border-transparent transition-all cursor-pointer"
+                      >
+                        <div className="flex items-start justify-between mb-2 pr-10">
+                          <div className="flex-1 min-w-0 pr-10"> {/* pr-10 ensures text doesn't hide behind the heart */}
+                            <h3 className="font-semibold text-[#1e293b]">{w.name}</h3>
+                            <p className="text-xs text-[#64748b] mt-0.5">by {w.trainer}</p>
+                          </div>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${w.difficulty === 'Beginner-Friendly' ? 'bg-green-100 text-green-700' : 'bg-[#d97706]/10 text-[#d97706]'}`}>{w.difficulty}</span>
                         </div>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${w.difficulty === 'Beginner-Friendly' ? 'bg-green-100 text-green-700' : 'bg-[#d97706]/10 text-[#d97706]'}`}>{w.difficulty}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {w.muscleGroups && w.muscleGroups.map((mg: string) => (<span key={mg} className="text-xs bg-[#1e293b]/5 text-[#1e293b] px-2 py-0.5 rounded">{mg}</span>))}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-xs text-[#64748b]">
-                          <span className="flex items-center gap-1"><Clock className="size-3" />{w.duration} min</span>
-                          <span className="flex items-center gap-1"><Flame className="size-3" />{w.calories} cal</span>
-                          <span className="flex items-center gap-1"><Dumbbell className="size-3" />{w.exercises?.length || 0} exercises</span>
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {w.muscleGroups && w.muscleGroups.map((mg: string) => (<span key={mg} className="text-xs bg-[#1e293b]/5 text-[#1e293b] px-2 py-0.5 rounded">{mg}</span>))}
                         </div>
-                        <ChevronRight className="size-4 text-[#64748b]" />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 text-xs text-[#64748b]">
+                            <span className="flex items-center gap-1"><Clock className="size-3" />{w.duration} min</span>
+                            <span className="flex items-center gap-1"><Flame className="size-3" />{w.calories} cal</span>
+                            <span className="flex items-center gap-1"><Dumbbell className="size-3" />{w.exercises?.length || 0} exercises</span>
+                          </div>
+                          <ChevronRight className="size-4 text-[#64748b]" />
+                        </div>
                       </div>
                     </div>
                   ))
@@ -199,9 +237,9 @@ export function WorkoutsPage() {
 
             <div className="w-full h-px bg-gray-200 mb-6"></div>
 
-            <h3 className="font-bold text-[#1e293b] mb-3 text-sm uppercase tracking-wider text-[#64748b]">Filter By Difficulty</h3>
+            <h3 className="font-bold text-[#1e293b] mb-3 text-sm uppercase tracking-wider text-[#64748b]">Filter By</h3>
             <div className="space-y-3 mb-8">
-              {['All', 'Beginner-Friendly', 'Intermediate', 'Advanced'].map(opt => (
+              {['All', 'Favorites', 'Beginner-Friendly', 'Intermediate', 'Advanced'].map(opt => (
                 <label key={opt} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors">
                   <input 
                     type="radio" 
