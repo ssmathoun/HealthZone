@@ -45,34 +45,41 @@ try {
             }
         }
 
-        // 2. Handle Password Logic
-        $newPass = $_POST['newPassword'] ?? '';
-        $confirmPass = $_POST['confirmNewPassword'] ?? '';
-        $oldPass = $_POST['oldPassword'] ?? '';
-
-        if (!empty($newPass)) {
-            // Check if they match first
-            if ($newPass !== $confirmPass) {
-                echo json_encode(["status" => "error", "message" => "New and confirm passwords do not match."]);
+        // 2. Handle Username Update
+        $newUsername = $_POST['username'] ?? '';
+        if (!empty($newUsername)) {
+            // Check if username is already taken (excluding current user)
+            $stm = $connection->prepare("SELECT id FROM users WHERE username = :username AND id != :id LIMIT 1");
+            $stm->execute(['username' => $newUsername, 'id' => $user_id]);
+            if ($stm->fetch()) {
+                echo json_encode(["status" => "error", "message" => "Username already taken."]);
                 exit;
             }
+            $upd = $connection->prepare("UPDATE users SET username = :username WHERE id = :id");
+            $upd->execute(['username' => $newUsername, 'id' => $user_id]);
+            $hasChanged = true;
+            $responseMsgs[] = "Username updated";
+        }
 
-            // Verify current password from DB
-            $stm = $connection->prepare("SELECT password FROM users WHERE id = :id LIMIT 1");
-            $stm->execute(['id' => $user_id]);
-            $userRecord = $stm->fetch();
-
-            if ($userRecord && password_verify($oldPass, $userRecord->password)) {
-                $hashed = password_hash($newPass, PASSWORD_DEFAULT);
-                $upd = $connection->prepare("UPDATE users SET password = :pass WHERE id = :id");
-                $upd->execute(['pass' => $hashed, 'id' => $user_id]);
-                $hasChanged = true;
-                $responseMsgs[] = "Password updated";
-            } else {
-                // If old password is wrong, we stop here
-                echo json_encode(["status" => "error", "message" => "Current password is incorrect."]);
+        // 3. Handle Email Update
+        $newEmail = $_POST['email'] ?? '';
+        if (!empty($newEmail)) {
+            // Validate email format
+            if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(["status" => "error", "message" => "Invalid email format."]);
                 exit;
             }
+            // Check if email is already taken (excluding current user)
+            $stm = $connection->prepare("SELECT id FROM users WHERE email = :email AND id != :id LIMIT 1");
+            $stm->execute(['email' => $newEmail, 'id' => $user_id]);
+            if ($stm->fetch()) {
+                echo json_encode(["status" => "error", "message" => "Email already in use."]);
+                exit;
+            }
+            $upd = $connection->prepare("UPDATE users SET email = :email WHERE id = :id");
+            $upd->execute(['email' => $newEmail, 'id' => $user_id]);
+            $hasChanged = true;
+            $responseMsgs[] = "Email updated";
         }
 
         if (!$hasChanged) {
