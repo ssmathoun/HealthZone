@@ -26,7 +26,7 @@ type ForumPost = {
   id: number;
   user: string;
   username?: string;
-  user_id?: number;
+  user_id?: number | string;
   avatar?: string | null;
   time: string;
   created_at?: string | null;
@@ -127,6 +127,10 @@ export function CommunityPage() {
 
   const [searchUser, setSearchUser] = useState("");
   const [searchTopic, setSearchTopic] = useState("");
+
+  // Profile bio modal state
+  const [viewingProfile, setViewingProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/profile.php`, { credentials: "include" })
@@ -495,6 +499,22 @@ export function CommunityPage() {
     setDeletingCommentId(null);
   };
 
+  // View a user's profile bio
+  const viewUserProfile = async (userId: number | string | undefined, username: string) => {
+    const id = userId ? Number(userId) : null;
+    if (!id) return;
+    setProfileLoading(true);
+    setViewingProfile({ username, avatar: null, email: '' });
+    try {
+      const res = await fetch(`${API_BASE}/profile.php?user_id=${id}`, { credentials: 'include' });
+      const data = await res.json();
+      if (data.status === 'success' && data.user) {
+        setViewingProfile(data.user);
+      }
+    } catch {}
+    setProfileLoading(false);
+  };
+
   const isAuthor = (post: ForumPost) => {
     if (!currentUser) return false;
     return (
@@ -697,7 +717,10 @@ export function CommunityPage() {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <h3 className="font-semibold text-[#1e293b] truncate">
+                              <h3
+                                className="font-semibold text-[#1e293b] truncate cursor-pointer hover:text-[#d97706] transition-colors"
+                                onClick={(e) => { e.stopPropagation(); viewUserProfile(post.user_id, post.user || post.username || ''); }}
+                              >
                                 {post.user || post.username}
                               </h3>
                               <p className="text-sm text-[#64748b]">
@@ -1163,6 +1186,68 @@ export function CommunityPage() {
                 {saving ? "Saving..." : "Save"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Bio Modal */}
+      {viewingProfile && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center"
+          onClick={() => setViewingProfile(null)}
+        >
+          <div
+            className="bg-white rounded-t-2xl sm:rounded-lg w-full sm:max-w-sm p-6 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-1 pb-2 sm:hidden">
+              <div className="w-10 h-1 bg-gray-300 rounded-full"></div>
+            </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[#1e293b]">User Profile</h2>
+              <button
+                onClick={() => setViewingProfile(null)}
+                className="text-[#64748b] hover:text-[#1e293b]"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {profileLoading ? (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 border-4 border-[#d97706] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <p className="text-sm text-[#64748b]">Loading profile...</p>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="size-20 bg-[#d97706] rounded-full overflow-hidden flex items-center justify-center text-2xl font-bold text-white mx-auto mb-3 relative">
+                  <span className="absolute text-2xl font-bold text-white">
+                    {(viewingProfile.username || "U").charAt(0).toUpperCase()}
+                  </span>
+                  {viewingProfile.avatar && (
+                    <img
+                      src={buildAssetUrl(viewingProfile.avatar)}
+                      alt=""
+                      className="w-full h-full object-cover relative z-10"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  )}
+                </div>
+                <h3 className="text-xl font-bold text-[#1e293b] mb-1">
+                  {viewingProfile.username}
+                </h3>
+                {viewingProfile.email && (
+                  <p className="text-sm text-[#64748b] mb-4">{viewingProfile.email}</p>
+                )}
+                <div className="bg-[#fdfcfb] rounded-lg p-4 border border-gray-200 text-left">
+                  <p className="text-sm text-[#64748b]">
+                    Member of the HealthZone community
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
