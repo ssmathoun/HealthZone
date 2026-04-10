@@ -20,14 +20,27 @@ try {
             SELECT p.id, p.user_id, p.title, p.body, p.media_url, p.media_type, p.created_at, u.username,
                    (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
                    (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS likes,
-                   EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = :uid) AS liked_by_user
+                   EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = :uid1) AS liked_by_user,
+                   EXISTS(SELECT 1 FROM post_bookmarks b WHERE b.post_id = p.id AND b.user_id = :uid2) AS is_bookmarked
             FROM posts p
             JOIN users u ON p.user_id = u.id
             ORDER BY p.created_at DESC
         ");
-        // Pass current user ID so we know if the heart should be pre-filled
-        $stm->execute(['uid' => $user_id ?? 0]);
+        
+        // Bind parameters safely
+        $stm->execute([
+            'uid1' => $user_id ?? 0,
+            'uid2' => $user_id ?? 0
+        ]);
+        
         $posts = $stm->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Cast boolean values
+        for ($i = 0; $i < count($posts); $i++) {
+            $posts[$i]['liked_by_user'] = (bool)$posts[$i]['liked_by_user'];
+            $posts[$i]['is_bookmarked'] = (bool)$posts[$i]['is_bookmarked'];
+        }
+        
         echo json_encode(["status" => "success", "posts" => $posts]);
         exit;
     }
@@ -120,6 +133,33 @@ try {
             'media_type' => $media_type
         ]);
         echo json_encode(["status" => "success", "id" => $connection->lastInsertId()]);
+        exit;
+    }
+
+    if ($action === 'toggle_bookmark' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $data = json_decode(file_get_contents("php://input"), true);
+        $post_id = $data['post_id'] ?? null;
+
+        if (!$post_id || !$user_id) {
+            echo json_encode(["status" => "error", "message" => "Post ID and Login required"]);
+            exit;
+        }
+
+        $check = $connection->prepare("SELECT id FROM post_bookmarks WHERE user_id = :uid AND post_id = :pid");
+        $check->execute(['uid' => $user_id, 'pid' => $post_id]);
+        $existing = $check->fetch();
+
+        if ($existing) {
+            $del = $connection->prepare("DELETE FROM post_bookmarks WHERE user_id = :uid AND post_id = :pid");
+            $del->execute(['uid' => $user_id, 'pid' => $post_id]);
+            $is_bookmarked = false;
+        } else {
+            $ins = $connection->prepare("INSERT INTO post_bookmarks (user_id, post_id) VALUES (:uid, :pid)");
+            $ins->execute(['uid' => $user_id, 'pid' => $post_id]);
+            $is_bookmarked = true;
+        }
+
+        echo json_encode(["status" => "success", "is_bookmarked" => $is_bookmarked]);
         exit;
     }
 
