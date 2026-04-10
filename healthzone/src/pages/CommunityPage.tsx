@@ -1,23 +1,6 @@
-import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Users,
-  MessageCircle,
-  Heart,
-  Share2,
-  Trophy,
-  Calendar,
-  ArrowLeft,
-  Trash2,
-  Plus,
-  X,
-  Image,
-  Film,
-  Pencil,
-  Send,
-  Search,
-  Bookmark,
-} from "lucide-react";
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Users, MessageCircle, Heart, Share2, Trophy, Calendar, ArrowLeft, Trash2, Plus, X, Image, Film, Pencil, Send, Search, Bookmark } from 'lucide-react';
 
 const API_BASE =
   "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php";
@@ -90,9 +73,7 @@ function formatTimeAgo(timestamp?: string | null) {
 export function CommunityPage() {
   const navigate = useNavigate();
   const [likedPosts, setLikedPosts] = useState<Record<number, boolean>>({});
-  const [bookmarkedPosts, setBookmarkedPosts] = useState<
-    Record<number, boolean>
-  >({});
+  const [bookmarkedPosts, setBookmarkedPosts] = useState<Record<number, boolean>>({});
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -123,8 +104,8 @@ export function CommunityPage() {
     null,
   );
 
-  const [searchUser, setSearchUser] = useState("");
-  const [searchTopic, setSearchTopic] = useState("");
+  const [searchUser, setSearchUser] = useState('');
+  const [searchTopic, setSearchTopic] = useState('');
 
   useEffect(() => {
     fetch(`${API_BASE}/profile.php`, { credentials: "include" })
@@ -137,48 +118,30 @@ export function CommunityPage() {
 
   const fetchPosts = () => {
     setLoading(true);
-    fetch(`${API_BASE}/posts.php?action=get_posts`, { credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "success" && Array.isArray(data.posts)) {
+    fetch(`${API_BASE}/posts.php?action=get_posts`, { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success' && Array.isArray(data.posts)) {
           setPosts(data.posts);
-
-          setLikedPosts(
-            data.posts.reduce(
-              (acc: Record<number, boolean>, post: ForumPost) => {
-                const rawLiked: any = post.liked_by_user;
-                acc[post.id] =
-                  rawLiked === true ||
-                  rawLiked === 1 ||
-                  String(rawLiked) === "1" ||
-                  String(rawLiked) === "true";
-                return acc;
-              },
-              {},
-            ),
-          );
-
-          setBookmarkedPosts(
-            data.posts.reduce(
-              (acc: Record<number, boolean>, post: ForumPost) => {
-                const rawBookmarked: any = post.is_bookmarked;
-                acc[post.id] =
-                  rawBookmarked === true ||
-                  rawBookmarked === 1 ||
-                  String(rawBookmarked) === "1" ||
-                  String(rawBookmarked) === "true";
-                return acc;
-              },
-              {},
-            ),
-          );
-
-          setError("");
+          
+          setLikedPosts(data.posts.reduce((acc: Record<number, boolean>, post: ForumPost) => {
+            const rawLiked: any = post.liked_by_user;
+            acc[post.id] = rawLiked === true || rawLiked === 1 || String(rawLiked) === "1" || String(rawLiked) === "true";
+            return acc;
+          }, {}));
+          
+          setBookmarkedPosts(data.posts.reduce((acc: Record<number, boolean>, post: ForumPost) => {
+            const rawBookmarked: any = post.is_bookmarked;
+            acc[post.id] = rawBookmarked === true || rawBookmarked === 1 || String(rawBookmarked) === "1" || String(rawBookmarked) === "true";
+            return acc;
+          }, {}));
+          
+          setError('');
         } else {
-          setError(data.message || "Unable to load posts.");
+          setError(data.message || 'Unable to load posts.');
         }
       })
-      .catch(() => setError("Unable to load posts."))
+      .catch(() => setError('Unable to load posts.'))
       .finally(() => setLoading(false));
   };
 
@@ -195,53 +158,39 @@ export function CommunityPage() {
         body: JSON.stringify({ post_id: postId }),
       });
       const data = await res.json();
-      if (data.status === "success") {
-        const isNowLiked =
-          data.liked === true || data.liked === "true" || data.liked === 1;
-        setLikedPosts((prev) => ({ ...prev, [postId]: isNowLiked }));
-        setPosts((prevPosts) =>
-          prevPosts.map((p) => {
-            if (p.id === postId) {
-              return {
-                ...p,
-                likes: isNowLiked ? Number(p.likes) + 1 : Number(p.likes) - 1,
-                liked_by_user: isNowLiked,
-              };
-            }
-            return p;
-          }),
-        );
+      if (data.status === 'success') {
+        const isNowLiked = data.liked === true || data.liked === "true" || data.liked === 1;
+        setLikedPosts(prev => ({ ...prev, [postId]: isNowLiked }));
+        setPosts(prevPosts => prevPosts.map(p => {
+          if (p.id === postId) {
+            return { ...p, likes: isNowLiked ? (Number(p.likes) + 1) : (Number(p.likes) - 1), liked_by_user: isNowLiked };
+          }
+          return p;
+        }));
       }
-    } catch (err) {
-      console.error("Like toggle failed", err);
-    }
+    } catch (err) { console.error("Like toggle failed", err); }
   };
 
   // UPDATED: Strict boolean casting for the Bookmark logic
   const handleBookmark = async (postId: number) => {
     try {
       const res = await fetch(`${API_BASE}/posts.php?action=toggle_bookmark`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ post_id: postId }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ post_id: postId })
       });
       const data = await res.json();
-
-      if (data.status === "success") {
+      
+      if (data.status === 'success') {
         // Force the result into a strict boolean
-        const isNowBookmarked =
-          data.is_bookmarked === true ||
-          data.is_bookmarked === "true" ||
-          data.is_bookmarked === 1;
-
-        setBookmarkedPosts((prev) => ({ ...prev, [postId]: isNowBookmarked }));
-
-        setPosts((prevPosts) =>
-          prevPosts.map((p) =>
-            p.id === postId ? { ...p, is_bookmarked: isNowBookmarked } : p,
-          ),
-        );
+        const isNowBookmarked = data.is_bookmarked === true || data.is_bookmarked === "true" || data.is_bookmarked === 1;
+        
+        setBookmarkedPosts(prev => ({ ...prev, [postId]: isNowBookmarked }));
+        
+        setPosts(prevPosts => prevPosts.map(p => 
+          p.id === postId ? { ...p, is_bookmarked: isNowBookmarked } : p
+        ));
       }
     } catch (err) {
       console.error("Bookmark toggle failed", err);
@@ -350,9 +299,8 @@ export function CommunityPage() {
         body: JSON.stringify({ post_id: postId }),
       });
       const data = await res.json();
-      if (data.status === "success") {
-        setPosts((prev) => prev.filter((p) => p.id !== postId));
-      } else {
+      if (data.status === 'success') { setPosts(prev => prev.filter(p => p.id !== postId)); }
+      else {
         const res2 = await fetch(`${API_BASE}/posts.php?action=delete_post`, {
           method: "POST",
           credentials: "include",
@@ -477,16 +425,12 @@ export function CommunityPage() {
     );
   };
 
-  const filteredPosts = posts.filter((post) => {
-    const userName = (post.user || post.username || "").toLowerCase();
-    const title = (post.title || "").toLowerCase();
-    const body = (post.body || post.content || "").toLowerCase();
-    const userMatch =
-      !searchUser.trim() || userName.includes(searchUser.toLowerCase());
-    const topicMatch =
-      !searchTopic.trim() ||
-      title.includes(searchTopic.toLowerCase()) ||
-      body.includes(searchTopic.toLowerCase());
+  const filteredPosts = posts.filter(post => {
+    const userName = (post.user || post.username || '').toLowerCase();
+    const title = (post.title || '').toLowerCase();
+    const body = (post.body || post.content || '').toLowerCase();
+    const userMatch = !searchUser.trim() || userName.includes(searchUser.toLowerCase());
+    const topicMatch = !searchTopic.trim() || title.includes(searchTopic.toLowerCase()) || body.includes(searchTopic.toLowerCase());
     return userMatch && topicMatch;
   });
 
@@ -520,16 +464,16 @@ export function CommunityPage() {
               </h1>
               <p className="text-[#64748b]">Connect with fitness enthusiasts</p>
             </div>
-
+            
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate("/bookmarks")}
+              <button 
+                onClick={() => navigate('/bookmarks')} 
                 className="bg-white text-[#d97706] border border-[#d97706] px-4 py-2.5 rounded-lg hover:bg-[#fffbeb] font-medium text-sm flex items-center gap-2 transition-colors"
               >
                 <Bookmark className="size-4" /> Bookmarks
               </button>
-              <button
-                onClick={() => setShowCreateModal(true)}
+              <button 
+                onClick={() => setShowCreateModal(true)} 
                 className="bg-[#d97706] text-white px-4 py-2.5 rounded-lg hover:bg-[#b45309] font-medium text-sm flex items-center gap-2 transition-colors"
               >
                 <Plus className="size-4" /> Create Post
@@ -623,66 +567,28 @@ export function CommunityPage() {
                   </div>
                 )}
 
-                {!loading &&
-                  !error &&
-                  filteredPosts.map((post) => {
-                    const liked =
-                      likedPosts[post.id] === true ||
-                      (likedPosts[post.id] === undefined &&
-                        !!post.liked_by_user);
-                    const likeCount =
-                      post.likes +
-                      (liked === !!post.liked_by_user ? 0 : liked ? 1 : -1);
+                {!loading && !error && filteredPosts.map((post) => {
+                  const liked = likedPosts[post.id] === true || (likedPosts[post.id] === undefined && !!post.liked_by_user);
+                  const likeCount = post.likes + (liked === !!post.liked_by_user ? 0 : liked ? 1 : -1);
+                  
+                  // UPDATED: Strict check for bookmark state
+                  const bookmarked = bookmarkedPosts[post.id] === true || (bookmarkedPosts[post.id] === undefined && !!post.is_bookmarked);
+                  
+                  const avatarUrl = buildAssetUrl(post.avatar);
+                  const mediaUrl = buildAssetUrl(post.image || post.media_url);
+                  const postKey = String(post.id);
 
-                    // UPDATED: Strict check for bookmark state
-                    const bookmarked =
-                      bookmarkedPosts[post.id] === true ||
-                      (bookmarkedPosts[post.id] === undefined &&
-                        !!post.is_bookmarked);
-
-                    const avatarUrl = buildAssetUrl(post.avatar);
-                    const mediaUrl = buildAssetUrl(
-                      post.image || post.media_url,
-                    );
-                    const postKey = String(post.id);
-
-                    return (
-                      <div
-                        key={post.id}
-                        className="bg-white rounded-lg shadow-md p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="size-10 bg-[#d97706] rounded-full overflow-hidden flex items-center justify-center text-sm font-semibold text-white shrink-0 relative">
-                              <span className="absolute text-sm font-semibold text-white">
-                                {(post.user || post.username || "U")
-                                  .charAt(0)
-                                  .toUpperCase()}
-                              </span>
-                              {avatarUrl && (
-                                <img
-                                  src={avatarUrl}
-                                  alt=""
-                                  className="w-full h-full object-cover relative z-10"
-                                  onError={(e) => {
-                                    (
-                                      e.target as HTMLImageElement
-                                    ).style.display = "none";
-                                  }}
-                                />
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <h3 className="font-semibold text-[#1e293b] truncate">
-                                {post.user || post.username}
-                              </h3>
-                              <p className="text-sm text-[#64748b]">
-                                {post.time || formatTimeAgo(post.created_at)}
-                                {post.created_at
-                                  ? ` · ${formatPostedDate(post.created_at)}`
-                                  : ""}
-                              </p>
-                            </div>
+                  return (
+                    <div key={post.id} className="bg-white rounded-lg shadow-md p-4">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="size-10 bg-[#d97706] rounded-full overflow-hidden flex items-center justify-center text-sm font-semibold text-white shrink-0 relative">
+                            <span className="absolute text-sm font-semibold text-white">{(post.user || post.username || 'U').charAt(0).toUpperCase()}</span>
+                            {avatarUrl && <img src={avatarUrl} alt="" className="w-full h-full object-cover relative z-10" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-[#1e293b] truncate">{post.user || post.username}</h3>
+                            <p className="text-sm text-[#64748b]">{post.time || formatTimeAgo(post.created_at)}{post.created_at ? ` · ${formatPostedDate(post.created_at)}` : ''}</p>
                           </div>
                           {isAuthor(post) && (
                             <div className="flex items-center gap-1 shrink-0">
@@ -755,104 +661,62 @@ export function CommunityPage() {
                             <span>Share</span>
                           </button>
 
-                          {/* UPDATED: Explicitly set fill and text hex colors for the Bookmark Icon */}
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleBookmark(post.id);
-                            }}
-                            className={`ml-auto flex items-center gap-2 text-sm transition-all active:scale-95 ${bookmarked ? "text-[#d97706]" : "text-[#64748b] hover:text-[#d97706]"}`}
-                          >
-                            <Bookmark
-                              className={`size-4 transition-colors ${bookmarked ? "fill-[#d97706] text-[#d97706]" : ""}`}
-                            />
-                          </button>
+                      {mediaUrl && (
+                        <div className="mb-3 overflow-hidden rounded-lg border border-gray-200 bg-[#fdfcfb]">
+                          {isVideoAsset(mediaUrl) || post.media_type === 'video' ? (
+                            <video src={mediaUrl} controls className="w-full max-h-[420px] bg-black" />
+                          ) : (
+                            <img src={mediaUrl} alt="" className="w-full max-h-[420px] object-cover" />
+                          )}
                         </div>
 
-                        {openComments[postKey] && (
-                          <div className="mt-3 pt-3 border-t border-gray-100">
-                            <div className="flex gap-2 mb-3">
-                              <input
-                                type="text"
-                                value={commentText[postKey] || ""}
-                                onChange={(e) =>
-                                  setCommentText((prev) => ({
-                                    ...prev,
-                                    [postKey]: e.target.value,
-                                  }))
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter")
-                                    handleSubmitComment(post.id);
-                                }}
-                                placeholder="Write a comment..."
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706] bg-white"
-                              />
-                              <button
-                                onClick={() => handleSubmitComment(post.id)}
-                                disabled={
-                                  !(commentText[postKey] || "").trim() ||
-                                  submittingComment[postKey]
-                                }
-                                className={`px-3 py-2 rounded-lg text-white transition-colors ${!(commentText[postKey] || "").trim() || submittingComment[postKey] ? "bg-gray-300" : "bg-[#d97706] hover:bg-[#b45309]"}`}
-                              >
-                                <Send className="size-4" />
-                              </button>
-                            </div>
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
-                              {(postComments[postKey] || []).length === 0 ? (
-                                <p className="text-xs text-[#64748b] text-center py-2">
-                                  No comments yet. Be the first!
-                                </p>
-                              ) : (
-                                (postComments[postKey] || []).map((c: any) => (
-                                  <div key={c.id} className="flex gap-2">
-                                    <div className="size-7 bg-[#1e293b] rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-[10px] shrink-0 mt-0.5 relative">
-                                      <span className="absolute text-[10px] font-bold text-white">
-                                        {(c.username || "U")
-                                          .charAt(0)
-                                          .toUpperCase()}
-                                      </span>
-                                      {c.avatar && (
-                                        <img
-                                          src={buildAssetUrl(c.avatar)}
-                                          alt=""
-                                          className="w-full h-full object-cover relative z-10"
-                                          onError={(e) => {
-                                            (
-                                              e.target as HTMLImageElement
-                                            ).style.display = "none";
-                                          }}
-                                        />
-                                      )}
-                                    </div>
-                                    <div className="flex-1 bg-gray-50 rounded-lg px-3 py-2">
-                                      <div className="flex items-center gap-2 mb-0.5">
-                                        <span className="text-xs font-semibold text-[#1e293b]">
-                                          {c.username}
-                                        </span>
-                                        <span className="text-[10px] text-[#64748b]">
-                                          {formatTimeAgo(c.created_at)}
-                                        </span>
-                                        {c.can_delete && (
-                                          <button
-                                            onClick={() =>
-                                              handleDeleteComment(c.id, post.id)
-                                            }
-                                            disabled={
-                                              deletingCommentId === c.id
-                                            }
-                                            className="ml-auto p-1 text-[#64748b] hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                                          >
-                                            <Trash2 className="size-3" />
-                                          </button>
-                                        )}
-                                      </div>
-                                      <p className="text-sm text-[#1e293b]">
-                                        {c.text}
-                                      </p>
-                                    </div>
+                      <div className="flex items-center gap-6 pt-3 border-t border-gray-100">
+                        <button onClick={() => handleLike(post.id)} className={`flex items-center gap-2 text-sm transition-colors ${liked ? 'text-[#d97706]' : 'text-[#64748b] hover:text-[#d97706]'}`}>
+                          <Heart className={`size-4 ${liked ? 'fill-current' : ''}`} />
+                          <span>{likeCount}</span>
+                        </button>
+                        <button onClick={() => toggleComments(post.id)} className={`flex items-center gap-2 text-sm transition-colors ${openComments[postKey] ? 'text-[#d97706]' : 'text-[#64748b] hover:text-[#d97706]'}`}>
+                          <MessageCircle className="size-4" />
+                          <span>{post.comment_count || post.comments || 0}</span>
+                        </button>
+                        <button className="flex items-center gap-2 text-sm text-[#64748b] hover:text-[#d97706] transition-colors">
+                          <Share2 className="size-4" /><span>Share</span>
+                        </button>
+                        
+                        {/* UPDATED: Explicitly set fill and text hex colors for the Bookmark Icon */}
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleBookmark(post.id);
+                          }} 
+                          className={`ml-auto flex items-center gap-2 text-sm transition-all active:scale-95 ${bookmarked ? 'text-[#d97706]' : 'text-[#64748b] hover:text-[#d97706]'}`}
+                        >
+                          <Bookmark className={`size-4 transition-colors ${bookmarked ? 'fill-[#d97706] text-[#d97706]' : ''}`} />
+                        </button>
+                      </div>
+
+                      {openComments[postKey] && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="flex gap-2 mb-3">
+                            <input type="text" value={commentText[postKey] || ''} onChange={e => setCommentText(prev => ({ ...prev, [postKey]: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') handleSubmitComment(post.id); }} placeholder="Write a comment..." className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d97706] bg-white" />
+                            <button onClick={() => handleSubmitComment(post.id)} disabled={!(commentText[postKey] || '').trim() || submittingComment[postKey]} className={`px-3 py-2 rounded-lg text-white transition-colors ${!(commentText[postKey] || '').trim() || submittingComment[postKey] ? 'bg-gray-300' : 'bg-[#d97706] hover:bg-[#b45309]'}`}>
+                              <Send className="size-4" />
+                            </button>
+                          </div>
+                          <div className="space-y-2 max-h-60 overflow-y-auto">
+                            {(postComments[postKey] || []).length === 0 ? (
+                              <p className="text-xs text-[#64748b] text-center py-2">No comments yet. Be the first!</p>
+                            ) : (postComments[postKey] || []).map((c: any) => (
+                              <div key={c.id} className="flex gap-2">
+                                <div className="size-7 bg-[#1e293b] rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-[10px] shrink-0 mt-0.5 relative">
+                                  <span className="absolute text-[10px] font-bold text-white">{(c.username || 'U').charAt(0).toUpperCase()}</span>
+                                  {c.avatar && <img src={buildAssetUrl(c.avatar)} alt="" className="w-full h-full object-cover relative z-10" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                                </div>
+                                <div className="flex-1 bg-gray-50 rounded-lg px-3 py-2">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <span className="text-xs font-semibold text-[#1e293b]">{c.username}</span>
+                                    <span className="text-[10px] text-[#64748b]">{formatTimeAgo(c.created_at)}</span>
                                   </div>
                                 ))
                               )}
