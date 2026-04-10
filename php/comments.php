@@ -98,6 +98,39 @@ try {
         exit;
     }
 
+    // EDIT COMMENT
+    if ($action === 'edit_comment' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $data = json_decode(file_get_contents("php://input"), true);
+        $comment_id = $data['comment_id'] ?? null;
+        $text = trim($data['text'] ?? '');
+
+        if (!$comment_id || $text === '') {
+            echo json_encode(["status" => "error", "message" => "Comment ID and text required"]);
+            exit;
+        }
+
+        // Verify ownership
+        $check = $connection->prepare("SELECT user_id FROM comments WHERE id = :id");
+        $check->execute(['id' => $comment_id]);
+        $comment = $check->fetch();
+
+        if (!$comment) {
+            echo json_encode(["status" => "error", "message" => "Comment not found"]);
+            exit;
+        }
+
+        if ($comment->user_id != $user_id) {
+            http_response_code(403);
+            echo json_encode(["status" => "error", "message" => "Unauthorized: you can only edit your own comments"]);
+            exit;
+        }
+
+        $connection->prepare("UPDATE comments SET text = :text WHERE id = :id")
+                   ->execute(['text' => $text, 'id' => $comment_id]);
+        echo json_encode(["status" => "success", "message" => "Comment updated"]);
+        exit;
+    }
+
     echo json_encode(["status" => "error", "message" => "Invalid action"]);
 
 } catch (PDOException $e) {
