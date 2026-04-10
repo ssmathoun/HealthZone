@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, MessageCircle, Heart, Share2, Trophy, Calendar, ArrowLeft, Trash2, Plus, X, Image, Film, Pencil, Send, Search } from 'lucide-react';
+import { Users, MessageCircle, Heart, Share2, Trophy, Calendar, ArrowLeft, Trash2, Plus, X, Image, Film, Pencil, Send, Search, Bookmark } from 'lucide-react';
 
 const API_BASE = 'https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php';
 
@@ -23,6 +23,7 @@ type ForumPost = {
   media_type?: string | null;
   liked_by_user?: boolean;
   can_delete?: boolean;
+  is_bookmarked?: boolean;
 };
 
 const groups = [
@@ -67,13 +68,13 @@ function formatTimeAgo(timestamp?: string | null) {
 export function CommunityPage() {
   const navigate = useNavigate();
   const [likedPosts, setLikedPosts] = useState<Record<number, boolean>>({});
+  const [bookmarkedPosts, setBookmarkedPosts] = useState<Record<number, boolean>>({});
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Create post state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
@@ -83,23 +84,19 @@ export function CommunityPage() {
   const [posting, setPosting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Edit post state
   const [editingPost, setEditingPost] = useState<ForumPost | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editBody, setEditBody] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Comment state
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [postComments, setPostComments] = useState<Record<string, any[]>>({});
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({});
 
-  // Search state
   const [searchUser, setSearchUser] = useState('');
   const [searchTopic, setSearchTopic] = useState('');
 
-  // Fetch current user
   useEffect(() => {
     fetch(`${API_BASE}/profile.php`, { credentials: 'include' })
       .then(res => res.json())
@@ -107,37 +104,32 @@ export function CommunityPage() {
       .catch(() => {});
   }, []);
 
-  // Fetch posts - try forum.php first, fallback to posts.php
   const fetchPosts = () => {
     setLoading(true);
-    fetch(`${API_BASE}/forum.php?action=get_posts`, { credentials: 'include' })
+    fetch(`${API_BASE}/posts.php?action=get_posts`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.status === 'success' && Array.isArray(data.posts)) {
           setPosts(data.posts);
+          
           setLikedPosts(data.posts.reduce((acc: Record<number, boolean>, post: ForumPost) => {
-            acc[post.id] = !!post.liked_by_user;
+            const rawLiked: any = post.liked_by_user;
+            acc[post.id] = rawLiked === true || rawLiked === 1 || String(rawLiked) === "1" || String(rawLiked) === "true";
             return acc;
           }, {}));
+          
+          setBookmarkedPosts(data.posts.reduce((acc: Record<number, boolean>, post: ForumPost) => {
+            const rawBookmarked: any = post.is_bookmarked;
+            acc[post.id] = rawBookmarked === true || rawBookmarked === 1 || String(rawBookmarked) === "1" || String(rawBookmarked) === "true";
+            return acc;
+          }, {}));
+          
           setError('');
-          return;
+        } else {
+          setError(data.message || 'Unable to load posts.');
         }
-        setError(data.message || 'Unable to load posts.');
       })
-      .catch(() => {
-        // Fallback to posts.php
-        fetch(`${API_BASE}/posts.php?action=get_posts`, { credentials: 'include' })
-          .then(res => res.json())
-          .then(data => {
-            if (data.status === 'success' && Array.isArray(data.posts)) {
-              setPosts(data.posts);
-              setError('');
-            } else {
-              setError('Unable to load posts.');
-            }
-          })
-          .catch(() => setError('Unable to load posts.'));
-      })
+      .catch(() => setError('Unable to load posts.'))
       .finally(() => setLoading(false));
   };
 
@@ -152,30 +144,45 @@ export function CommunityPage() {
         body: JSON.stringify({ post_id: postId })
       });
       const data = await res.json();
-      
       if (data.status === 'success') {
-        // 1. Update the 'filled/outlined' heart state
-        setLikedPosts(prev => ({ ...prev, [postId]: data.liked }));
-        
-        // 2. Update the counter (+1 or -1) in the posts array
+        const isNowLiked = data.liked === true || data.liked === "true" || data.liked === 1;
+        setLikedPosts(prev => ({ ...prev, [postId]: isNowLiked }));
         setPosts(prevPosts => prevPosts.map(p => {
           if (p.id === postId) {
-            return {
-              ...p,
-              // If data.liked is true, user just liked it (+1). Else, they unliked it (-1).
-              likes: data.liked ? (Number(p.likes) + 1) : (Number(p.likes) - 1),
-              liked_by_user: data.liked
-            };
+            return { ...p, likes: isNowLiked ? (Number(p.likes) + 1) : (Number(p.likes) - 1), liked_by_user: isNowLiked };
           }
           return p;
         }));
       }
+    } catch (err) { console.error("Like toggle failed", err); }
+  };
+
+  // UPDATED: Strict boolean casting for the Bookmark logic
+  const handleBookmark = async (postId: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/posts.php?action=toggle_bookmark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ post_id: postId })
+      });
+      const data = await res.json();
+      
+      if (data.status === 'success') {
+        // Force the result into a strict boolean
+        const isNowBookmarked = data.is_bookmarked === true || data.is_bookmarked === "true" || data.is_bookmarked === 1;
+        
+        setBookmarkedPosts(prev => ({ ...prev, [postId]: isNowBookmarked }));
+        
+        setPosts(prevPosts => prevPosts.map(p => 
+          p.id === postId ? { ...p, is_bookmarked: isNowBookmarked } : p
+        ));
+      }
     } catch (err) {
-      console.error("Like toggle failed", err);
+      console.error("Bookmark toggle failed", err);
     }
   };
 
-  // Media file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -192,7 +199,6 @@ export function CommunityPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Create post - try posts.php first (supports media), fallback to forum.php
   const handleCreatePost = async () => {
     if (!newTitle.trim() && !newBody.trim() && !newMedia) { alert('Post must contain content.'); return; }
     setPosting(true);
@@ -214,7 +220,6 @@ export function CommunityPage() {
     setPosting(false);
   };
 
-  // Edit post
   const startEdit = (post: ForumPost) => {
     setEditingPost(post);
     setEditTitle(post.title || '');
@@ -238,7 +243,6 @@ export function CommunityPage() {
     setSaving(false);
   };
 
-  // Delete post - try forum.php first, fallback to posts.php
   const handleDelete = async (postId: number) => {
     if (!confirm('Delete this post?')) return;
     setDeletingId(postId);
@@ -251,7 +255,6 @@ export function CommunityPage() {
       const data = await res.json();
       if (data.status === 'success') { setPosts(prev => prev.filter(p => p.id !== postId)); }
       else {
-        // Fallback to posts.php
         const res2 = await fetch(`${API_BASE}/posts.php?action=delete_post`, {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -265,7 +268,6 @@ export function CommunityPage() {
     setDeletingId(null);
   };
 
-  // Comments
   const toggleComments = (postId: number) => {
     const key = String(postId);
     const isOpen = openComments[key];
@@ -310,7 +312,6 @@ export function CommunityPage() {
     return post.can_delete || post.user_id === currentUser.id || post.username === currentUser.username;
   };
 
-  // Filter posts by user search and topic search
   const filteredPosts = posts.filter(post => {
     const userName = (post.user || post.username || '').toLowerCase();
     const title = (post.title || '').toLowerCase();
@@ -337,12 +338,23 @@ export function CommunityPage() {
               <h1 className="text-3xl font-bold text-[#1e293b] mb-2">Community</h1>
               <p className="text-[#64748b]">Connect with fitness enthusiasts</p>
             </div>
-            <button onClick={() => setShowCreateModal(true)} className="bg-[#d97706] text-white px-4 py-2.5 rounded-lg hover:bg-[#b45309] font-medium text-sm flex items-center gap-2">
-              <Plus className="size-4" /> Create Post
-            </button>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => navigate('/bookmarks')} 
+                className="bg-white text-[#d97706] border border-[#d97706] px-4 py-2.5 rounded-lg hover:bg-[#fffbeb] font-medium text-sm flex items-center gap-2 transition-colors"
+              >
+                <Bookmark className="size-4" /> Bookmarks
+              </button>
+              <button 
+                onClick={() => setShowCreateModal(true)} 
+                className="bg-[#d97706] text-white px-4 py-2.5 rounded-lg hover:bg-[#b45309] font-medium text-sm flex items-center gap-2 transition-colors"
+              >
+                <Plus className="size-4" /> Create Post
+              </button>
+            </div>
           </div>
 
-          {/* Search Bars */}
           <div className="grid sm:grid-cols-2 gap-3 mb-6">
             <div className="relative">
               <Search className="size-4 text-[#64748b] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -357,7 +369,6 @@ export function CommunityPage() {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6">
-            {/* Main Feed */}
             <div className="lg:col-span-2">
               <div className="space-y-4">
                 {loading && (
@@ -390,15 +401,18 @@ export function CommunityPage() {
                 )}
 
                 {!loading && !error && filteredPosts.map((post) => {
-                  const liked = likedPosts[post.id] ?? !!post.liked_by_user;
+                  const liked = likedPosts[post.id] === true || (likedPosts[post.id] === undefined && !!post.liked_by_user);
                   const likeCount = post.likes + (liked === !!post.liked_by_user ? 0 : liked ? 1 : -1);
+                  
+                  // UPDATED: Strict check for bookmark state
+                  const bookmarked = bookmarkedPosts[post.id] === true || (bookmarkedPosts[post.id] === undefined && !!post.is_bookmarked);
+                  
                   const avatarUrl = buildAssetUrl(post.avatar);
                   const mediaUrl = buildAssetUrl(post.image || post.media_url);
                   const postKey = String(post.id);
 
                   return (
                     <div key={post.id} className="bg-white rounded-lg shadow-md p-4">
-                      {/* Header */}
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="size-10 bg-[#d97706] rounded-full overflow-hidden flex items-center justify-center text-sm font-semibold text-white shrink-0 relative">
@@ -421,7 +435,6 @@ export function CommunityPage() {
                       {post.title && <h2 className="text-lg font-semibold text-[#1e293b] mb-2">{post.title}</h2>}
                       <p className="text-[#1e293b] mb-3 whitespace-pre-wrap">{post.body || post.content}</p>
 
-                      {/* Media */}
                       {mediaUrl && (
                         <div className="mb-3 overflow-hidden rounded-lg border border-gray-200 bg-[#fdfcfb]">
                           {isVideoAsset(mediaUrl) || post.media_type === 'video' ? (
@@ -432,7 +445,6 @@ export function CommunityPage() {
                         </div>
                       )}
 
-                      {/* Actions */}
                       <div className="flex items-center gap-6 pt-3 border-t border-gray-100">
                         <button onClick={() => handleLike(post.id)} className={`flex items-center gap-2 text-sm transition-colors ${liked ? 'text-[#d97706]' : 'text-[#64748b] hover:text-[#d97706]'}`}>
                           <Heart className={`size-4 ${liked ? 'fill-current' : ''}`} />
@@ -445,9 +457,20 @@ export function CommunityPage() {
                         <button className="flex items-center gap-2 text-sm text-[#64748b] hover:text-[#d97706] transition-colors">
                           <Share2 className="size-4" /><span>Share</span>
                         </button>
+                        
+                        {/* UPDATED: Explicitly set fill and text hex colors for the Bookmark Icon */}
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleBookmark(post.id);
+                          }} 
+                          className={`ml-auto flex items-center gap-2 text-sm transition-all active:scale-95 ${bookmarked ? 'text-[#d97706]' : 'text-[#64748b] hover:text-[#d97706]'}`}
+                        >
+                          <Bookmark className={`size-4 transition-colors ${bookmarked ? 'fill-[#d97706] text-[#d97706]' : ''}`} />
+                        </button>
                       </div>
 
-                      {/* Comments Section */}
                       {openComments[postKey] && (
                         <div className="mt-3 pt-3 border-t border-gray-100">
                           <div className="flex gap-2 mb-3">
@@ -483,7 +506,6 @@ export function CommunityPage() {
               </div>
             </div>
 
-            {/* Sidebar */}
             <div className="space-y-4">
               <div className="bg-white rounded-lg shadow-md p-4">
                 <h2 className="font-semibold text-[#1e293b] mb-3 flex items-center gap-2"><Users className="size-5 text-[#d97706]" />My Groups</h2>

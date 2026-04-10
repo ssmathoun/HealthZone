@@ -554,6 +554,13 @@ export function HomePage() {
               <Scale className="size-6" />
               <span className="text-xs font-medium">Weight Tracker</span>
             </button>
+            <button
+            onClick={() => navigate("/bookmarks")}
+            className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+          >
+            <BookOpen className="size-6 text-[#d97706]" />
+            <span className="text-xs font-medium">Bookmarks</span>
+          </button>
           </div>
         </div>
         {/* Today's Meals */}
