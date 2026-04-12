@@ -58,6 +58,11 @@ try {
         exit;
     }
 
+    if ($method === 'POST' && $action === 'leave_leaderboard') {
+        echo json_encode(leave_leaderboard($connection, $userId));
+        exit;
+    }
+
     if ($method === 'POST' && $action === 'quit') {
         $challengeId = isset($data['challenge_id']) ? (int) $data['challenge_id'] : 0;
 
