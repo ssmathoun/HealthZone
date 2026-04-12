@@ -114,6 +114,17 @@ function join_leaderboard(PDO $connection, int $userId): array
     return ['status' => 'success', 'points' => $points];
 }
 
+function leave_leaderboard(PDO $connection, int $userId): array
+{
+    ensure_challenges_tables($connection);
+    $stmt = $connection->prepare("
+        UPDATE user_points SET is_ranked = 0 WHERE user_id = :uid
+    ");
+    $stmt->execute(['uid' => $userId]);
+    $points = calculate_my_points($connection, $userId);
+    return ['status' => 'success', 'points' => $points];
+}
+
 function build_challenge_payload(object $row): array
 {
     $progress = isset($row->progress) ? (int) $row->progress : 0;
@@ -369,4 +380,4 @@ function get_leaderboard(PDO $connection, ?int $userId): array
         'my_is_ranked' => $myIsRanked,
         'my_username'  => $myUsername,
     ];
-} 
+}
