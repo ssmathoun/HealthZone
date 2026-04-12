@@ -299,6 +299,21 @@ export function HomePage() {
     refreshLeaderboard();
   };
 
+  const handleLeaveLeaderboard = async () => {
+    try {
+      const res = await fetch(`${CHALLENGES_URL}?action=leave_leaderboard`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (data?.status !== "success") return;
+    } catch {
+      return;
+    }
+    refreshLeaderboard();
+  };
+
   const handleJoinChallenge = async (challengeId: number) => {
     try {
       await fetch(`${CHALLENGES_URL}?action=join`, {
@@ -649,7 +664,9 @@ export function HomePage() {
                       </span>
                       {challenge.is_joined && (
                         <button
-                          onClick={() => handleQuitChallenge(challenge.challenge_id)}
+                          onClick={() =>
+                            handleQuitChallenge(challenge.challenge_id)
+                          }
                           className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full font-medium hover:bg-red-500/40 transition-colors"
                         >
                           Leave
@@ -747,12 +764,19 @@ export function HomePage() {
                 {myPoints.toLocaleString()} pts
               </span>
             </div>
-            {!myIsRanked && (
+            {!myIsRanked ? (
               <button
                 onClick={handleJoinLeaderboard}
                 className="w-full mt-2 bg-[#d97706] text-white text-sm font-medium py-2 rounded-lg hover:opacity-90 transition-opacity"
               >
                 Join the Competition
+              </button>
+            ) : (
+              <button
+                onClick={handleLeaveLeaderboard}
+                className="w-full mt-2 bg-white text-[#d97706] text-sm font-medium py-2 rounded-lg border border-[#d97706] hover:bg-[#d97706]/10 transition-colors"
+              >
+                Leave Leaderboard
               </button>
             )}
           </div>
