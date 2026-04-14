@@ -5,7 +5,6 @@ import {
   MessageCircle,
   Heart,
   Share2,
-  Trophy,
   Calendar,
   ArrowLeft,
   Trash2,
@@ -17,7 +16,15 @@ import {
   Send,
   Search,
   Bookmark,
+  ExternalLink,
 } from "lucide-react";
+import {
+  COMMUNITY_GROUPS,
+  getAvailableGroups,
+  getJoinedGroups,
+  isGroupJoined,
+  joinCommunityGroup,
+} from "../lib/communityGroups";
 
 const API_BASE =
   "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php";
@@ -43,13 +50,6 @@ type ForumPost = {
   can_delete?: boolean;
   is_bookmarked?: boolean;
 };
-
-const groups = [
-  { id: 1, name: "FitSquad", members: 24, activity: "Basketball" },
-  { id: 2, name: "Runners United", members: 18, activity: "Running" },
-  { id: 3, name: "Meal Preppers", members: 32, activity: "Nutrition" },
-  { id: 4, name: "Yoga Warriors", members: 15, activity: "Yoga" },
-];
 
 function buildAssetUrl(path?: string | null) {
   if (!path) return "";
@@ -127,6 +127,8 @@ export function CommunityPage() {
 
   const [searchUser, setSearchUser] = useState("");
   const [searchTopic, setSearchTopic] = useState("");
+  const [joinedGroups, setJoinedGroups] = useState(getJoinedGroups());
+  const [availableGroups, setAvailableGroups] = useState(getAvailableGroups());
 
   // Profile bio modal state
   const [viewingProfile, setViewingProfile] = useState<any>(null);
@@ -140,6 +142,25 @@ export function CommunityPage() {
       })
       .catch(() => {});
   }, []);
+
+  const refreshGroupLists = () => {
+    setJoinedGroups(getJoinedGroups());
+    setAvailableGroups(getAvailableGroups());
+  };
+
+  const handleJoinGroup = (groupSlug: string) => {
+    const group = COMMUNITY_GROUPS.find((entry) => entry.slug === groupSlug);
+    if (!group) return;
+    if (!isGroupJoined(group.slug)) {
+      joinCommunityGroup(group.slug);
+      refreshGroupLists();
+    }
+    alert(`You joined ${group.name}. You can now chat in the group.`);
+  };
+
+  const openGroupForum = (groupSlug: string) => {
+    navigate(`/community/group/${groupSlug}`);
+  };
 
   const fetchPosts = () => {
     setLoading(true);
@@ -976,29 +997,75 @@ export function CommunityPage() {
               <div className="bg-white rounded-lg shadow-md p-4">
                 <h2 className="font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
                   <Users className="size-5 text-[#d97706]" />
-                  My Groups
+                  Groups
                 </h2>
-                <div className="space-y-3">
-                  {groups.map((g) => (
-                    <div
-                      key={g.id}
-                      className="flex items-center justify-between p-3 bg-[#fdfcfb] rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                    >
-                      <div>
-                        <p className="font-medium text-[#1e293b] text-sm">
-                          {g.name}
-                        </p>
-                        <p className="text-xs text-[#64748b]">
-                          {g.members} members
-                        </p>
-                      </div>
-                      <Users className="size-4 text-[#d97706]" />
+
+                {joinedGroups.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b] mb-2">
+                      Your Groups
+                    </p>
+                    <div className="space-y-2">
+                      {joinedGroups.map((group) => (
+                        <button
+                          key={group.slug}
+                          onClick={() => openGroupForum(group.slug)}
+                          className="w-full flex items-center justify-between p-3 bg-[#fdfcfb] rounded-lg hover:bg-gray-50 transition-colors text-left"
+                        >
+                          <div>
+                            <p className="font-medium text-[#1e293b] text-sm">
+                              {group.name}
+                            </p>
+                            <p className="text-xs text-[#64748b]">
+                              Joined group
+                            </p>
+                          </div>
+                          <ExternalLink className="size-4 text-[#d97706]" />
+                        </button>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                    Discover Groups
+                  </p>
+                  {availableGroups.length === 0 ? (
+                    <div className="p-3 bg-[#fdfcfb] rounded-lg">
+                      <p className="text-sm text-[#64748b]">
+                        You have joined all available groups.
+                      </p>
+                    </div>
+                  ) : (
+                    availableGroups.map((group) => (
+                      <div
+                        key={group.slug}
+                        className="p-3 bg-[#fdfcfb] rounded-lg border border-gray-100"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-[#1e293b] text-sm">
+                              {group.name}
+                            </p>
+                            <p className="text-xs text-[#64748b] mb-1">
+                              {group.focus}
+                            </p>
+                            <p className="text-xs text-[#64748b]">
+                              {group.description}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleJoinGroup(group.slug)}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#d97706] text-white hover:bg-[#b45309] transition-colors whitespace-nowrap"
+                          >
+                            Join
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-                <button className="w-full mt-3 text-[#d97706] text-sm font-medium hover:text-[#b45309]">
-                  + Join New Group
-                </button>
               </div>
 
               <div className="bg-white rounded-lg shadow-md p-4">

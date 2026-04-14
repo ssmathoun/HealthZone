@@ -19,9 +19,9 @@ import { GlobalRestTimerButton } from "./components/GlobalRestTimerButton";
 import { RestTimerProvider } from "./components/RestTimerProvider";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
-import { SleepPage } from "./pages/SleepPage";
 import { BookmarksPage } from "./pages/BookmarksPage";
 import { ContactPage } from "./pages/ContactPage";
+import { GroupForumPage } from "./pages/GroupForumPage";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
@@ -95,6 +95,8 @@ export default function App() {
                   <Route path="/recipes" element={<RecipesPage />} />
                   <Route path="/community" element={<CommunityPage />} />
                   <Route path="/forum" element={<CommunityPage />} />
+                  <Route path="/community/group/:groupSlug" element={<GroupForumPage />} />
+                  <Route path="/forum/group/:groupSlug" element={<GroupForumPage />} />
                   <Route path="/create-recipe" element={<CreateRecipePage />} />
                   <Route path="/create-workout" element={<CreateWorkoutPage />} />
                   <Route path="/log-meal" element={<LogMealPage />} />

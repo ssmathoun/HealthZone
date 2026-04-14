@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Lock, Bell, Moon, LogOut, ChevronRight, Camera } from 'lucide-react';
+import { ArrowLeft, User, Mail, Lock, Bell, Moon, LogOut, Camera } from 'lucide-react';
+import { useTheme } from '../hooks/useTheme';
 
 export function ProfileSettingsPage() {
   const navigate = useNavigate();
+  const { resolvedTheme, setTheme } = useTheme();
   const [name, setName] = useState('Alex Johnson');
   const [email, setEmail] = useState('alex.johnson@email.com');
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [saved, setSaved] = useState(false);
+  const darkMode = resolvedTheme === 'dark';
 
   const handleSave = () => {
     setSaved(true);
@@ -94,10 +96,10 @@ export function ProfileSettingsPage() {
                 <Moon className="size-5 text-[#64748b]" />
                 <div>
                   <p className="text-sm font-medium text-[#1e293b]">Dark Mode</p>
-                  <p className="text-xs text-[#64748b]">Coming soon</p>
+                  <p className="text-xs text-[#64748b]">Use the same app-wide theme as the dashboard toggle</p>
                 </div>
               </div>
-              <button onClick={() => setDarkMode(!darkMode)} className={`w-11 h-6 rounded-full transition-colors relative ${darkMode ? 'bg-[#d97706]' : 'bg-gray-300'}`}>
+              <button onClick={() => setTheme(darkMode ? 'light' : 'dark')} className={`w-11 h-6 rounded-full transition-colors relative ${darkMode ? 'bg-[#d97706]' : 'bg-gray-300'}`}>
                 <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform shadow-sm ${darkMode ? 'translate-x-5.5 right-0.5' : 'left-0.5'}`}></div>
               </button>
             </div>

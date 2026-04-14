@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Moon, Save, History, Clock, BarChart2 } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-
-// Import your custom chart components
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../components/ui/chart"; 
+import { ArrowLeft, Moon, Save, History, Clock } from 'lucide-react';
 
 export function SleepPage() {
   const navigate = useNavigate();
@@ -86,19 +82,6 @@ export function SleepPage() {
     }
   };
 
-  // Prepare data for the Bar Chart
-  const chartData = history.slice().reverse().map(log => ({
-    date: new Date(log.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric' }),
-    hours: Number(Number(log.hours).toFixed(1))
-  }));
-
-  const chartConfig = {
-    hours: {
-      label: "Hours Slept",
-      color: "#d97706", 
-    },
-  };
-
   return (
     <div className="min-h-screen bg-[#fdfcfb]">
       <nav className="bg-[#1e293b] text-white p-4 flex items-center gap-4 sticky top-0 z-50 shadow-md">
@@ -168,36 +151,6 @@ export function SleepPage() {
             </p>
           )}
         </section>
-
-        {/* Sleep Trends Chart */}
-        {chartData.length > 0 && (
-          <section className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart2 className="size-5 text-[#1e293b]" />
-              <h2 className="text-lg font-semibold text-[#1e293b]">Sleep Trends</h2>
-            </div>
-            
-            <ChartContainer config={chartConfig} className="min-h-[200px] w-full mt-4">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                  tick={{ fill: '#64748b', fontSize: 12 }}
-                />
-                <YAxis 
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: '#64748b', fontSize: 12 }}
-                />
-                <ChartTooltip cursor={{ fill: '#f8fafc' }} content={<ChartTooltipContent />} />
-                <Bar dataKey="hours" fill="var(--color-hours)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ChartContainer>
-          </section>
-        )}
 
         {/* Sleep History List */}
         <section className="bg-white rounded-lg shadow-md p-6">
