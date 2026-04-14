@@ -1,1 +1,1 @@
-export { HomePage as DashboardPage } from '../components/HomePage';
+export { HomePage as DashboardPage } from '../components/Homepage';
