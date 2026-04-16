@@ -60,6 +60,7 @@ export function HomePage() {
     "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/sleep.php";
   const [latestSleep, setLatestSleep] = useState<number>(0);
   const [latestWeight, setLatestWeight] = useState<number | null>(null);
+  const [workoutStreak, setWorkoutStreak] = useState<number>(0);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // =========================================================================
@@ -181,6 +182,17 @@ export function HomePage() {
       })
       .catch(() => {});
 
+    // Fetch workout streak
+    fetch(
+      "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_streak",
+      { credentials: "include" },
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") setWorkoutStreak(data.streak ?? 0);
+      })
+      .catch(() => {});
+
     // Fetch unread notification count
     fetch(
       "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/notifications.php?action=unread_count",
@@ -225,6 +237,16 @@ export function HomePage() {
 
       if (data.status === "success") {
         setWorkoutComplete(true);
+        // Refresh streak after workout
+        fetch(
+          "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_streak",
+          { credentials: "include" },
+        )
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.status === "success") setWorkoutStreak(d.streak ?? 0);
+          })
+          .catch(() => {});
         // Refresh challenges and leaderboard after workout
         fetch(`${CHALLENGES_URL}?action=get_available_challenges`, {
           credentials: "include",
@@ -519,6 +541,26 @@ export function HomePage() {
                 </div>
               </>
             )}
+          </button>
+          {/* Workout Streak card */}
+          <button
+            onClick={() => navigate("/log-workout")}
+            className="bg-white rounded-lg shadow-md p-2.5 sm:p-3 text-left hover:shadow-lg hover:border-[#d97706] border border-transparent transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
+              <Flame className="size-5 text-[#d97706]" />
+              <span className="text-[10px] sm:text-xs text-[#64748b]">
+                Streak
+              </span>
+            </div>
+            <div className="text-sm sm:text-lg font-bold text-[#1e293b] mb-1">
+              {workoutStreak > 0
+                ? `${workoutStreak} day${workoutStreak === 1 ? "" : "s"}`
+                : "Start now"}
+            </div>
+            <div className="text-[10px] sm:text-xs text-[#64748b]">
+              {workoutStreak > 0 ? "Workout streak" : "No streak yet"}
+            </div>
           </button>
         </div>
 
