@@ -109,7 +109,7 @@ try {
         ensure_challenges_tables($connection);
         $connection->beginTransaction();
 
-        $query = "INSERT INTO user_workout_logs (user_id, workout_id) VALUES (:user_id, :workout_id)";
+        $query = "INSERT INTO user_workout_logs (user_id, workout_id, completed_at) VALUES (:user_id, :workout_id, NOW())";
         $stm = $connection->prepare($query);
         
         if ($stm->execute(['user_id' => $current_user_id, 'workout_id' => $workout_id])) {
@@ -120,6 +120,67 @@ try {
             $connection->rollBack();
             echo json_encode(["status" => "error"]);
         }
+        exit;
+    }
+
+    if ($method === 'GET' && $action === 'get_history') {
+        try {
+            $stmt = $connection->prepare("
+                SELECT uwl.id, w.name, w.difficulty,
+                       w.duration_min AS duration,
+                       w.calories_burned AS calories,
+                       u.username AS trainer,
+                       uwl.completed_at
+                FROM user_workout_logs uwl
+                JOIN workouts w ON uwl.workout_id = w.id
+                JOIN users u ON w.trainer_id = u.id
+                WHERE uwl.user_id = :uid
+                ORDER BY uwl.completed_at DESC
+            ");
+            $stmt->execute(['uid' => $current_user_id]);
+            $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(["status" => "success", "logs" => $logs]);
+        } catch (PDOException $e) {
+            echo json_encode(["status" => "success", "logs" => []]);
+        }
+        exit;
+    }
+
+    if ($method === 'GET' && $action === 'get_streak') {
+        try {
+            $stmt = $connection->prepare("
+                SELECT DISTINCT DATE(completed_at) AS workout_day
+                FROM user_workout_logs
+                WHERE user_id = :uid AND completed_at IS NOT NULL
+                ORDER BY workout_day DESC
+            ");
+            $stmt->execute(['uid' => $current_user_id]);
+        } catch (PDOException) {
+            echo json_encode(["status" => "success", "streak" => 0]);
+            exit;
+        }
+
+        $days = array_values(array_filter($stmt->fetchAll(PDO::FETCH_COLUMN), fn($d) => !empty($d)));
+
+        $streak = 0;
+        if (!empty($days)) {
+            $today     = date('Y-m-d');
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+
+            if ($days[0] === $today || $days[0] === $yesterday) {
+                $expected = $days[0];
+                foreach ($days as $day) {
+                    if ($day === $expected) {
+                        $streak++;
+                        $expected = date('Y-m-d', strtotime($expected . ' -1 day'));
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        echo json_encode(["status" => "success", "streak" => $streak]);
         exit;
     }
 
