@@ -24,6 +24,7 @@ import {
   getJoinedGroups,
   isGroupJoined,
   joinCommunityGroup,
+  leaveCommunityGroup,
 } from "../lib/communityGroups";
 
 const API_BASE =
@@ -156,6 +157,15 @@ export function CommunityPage() {
       refreshGroupLists();
     }
     alert(`You joined ${group.name}. You can now chat in the group.`);
+  };
+
+  const handleLeaveGroup = (groupSlug: string) => {
+    const group = COMMUNITY_GROUPS.find((entry) => entry.slug === groupSlug);
+    if (!group || !isGroupJoined(group.slug)) return;
+    if (!confirm(`Leave ${group.name}? You can join again later.`)) return;
+
+    leaveCommunityGroup(group.slug);
+    refreshGroupLists();
   };
 
   const openGroupForum = (groupSlug: string) => {
@@ -1007,12 +1017,11 @@ export function CommunityPage() {
                     </p>
                     <div className="space-y-2">
                       {joinedGroups.map((group) => (
-                        <button
+                        <div
                           key={group.slug}
-                          onClick={() => openGroupForum(group.slug)}
-                          className="w-full flex items-center justify-between p-3 bg-[#fdfcfb] rounded-lg hover:bg-gray-50 transition-colors text-left"
+                          className="w-full flex items-center justify-between gap-3 p-3 bg-[#fdfcfb] rounded-lg border border-gray-100"
                         >
-                          <div>
+                          <div className="min-w-0">
                             <p className="font-medium text-[#1e293b] text-sm">
                               {group.name}
                             </p>
@@ -1020,8 +1029,23 @@ export function CommunityPage() {
                               Joined group
                             </p>
                           </div>
-                          <ExternalLink className="size-4 text-[#d97706]" />
-                        </button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => openGroupForum(group.slug)}
+                              className="p-2 text-[#d97706] hover:bg-[#d97706]/10 rounded-lg transition-colors"
+                              aria-label={`Open ${group.name}`}
+                              title={`Open ${group.name}`}
+                            >
+                              <ExternalLink className="size-4" />
+                            </button>
+                            <button
+                              onClick={() => handleLeaveGroup(group.slug)}
+                              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[#d97706]/30 text-[#d97706] hover:bg-[#d97706]/10 transition-colors"
+                            >
+                              Leave
+                            </button>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>

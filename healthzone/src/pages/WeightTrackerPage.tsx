@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Scale, Plus } from "lucide-react";
+import { SafeTrendChart } from "../components/SafeTrendChart";
 
 const API_BASE =
   "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php";
@@ -42,9 +43,14 @@ export function WeightTrackerPage() {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.status === "success") setLogs(data.logs);
+        if (data.status === "success" && Array.isArray(data.logs)) {
+          setLogs(data.logs);
+          return;
+        }
+
+        setLogs([]);
       })
-      .catch(() => {})
+      .catch(() => setLogs([]))
       .finally(() => setLoading(false));
   };
 
@@ -93,6 +99,26 @@ export function WeightTrackerPage() {
     latest !== null && earliest !== null
       ? +(latest - earliest).toFixed(1)
       : null;
+  const chartData = logs.reduce<{ label: string; value: number }[]>(
+    (points, log) => {
+      const loggedAt = new Date(log.logged_at);
+
+      if (Number.isNaN(loggedAt.getTime()) || !Number.isFinite(log.weight_lbs)) {
+        return points;
+      }
+
+      points.push({
+        label: loggedAt.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        value: Number(log.weight_lbs),
+      });
+
+      return points;
+    },
+    [],
+  );
 
   return (
     <div className="min-h-screen bg-[#fdfcfb]">
@@ -152,6 +178,55 @@ export function WeightTrackerPage() {
           )}
         </div>
 
+        <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-base font-semibold text-[#1e293b]">
+                Weight Trend
+              </h2>
+              <p className="text-xs text-[#64748b] mt-1">
+                Visualize your weight changes without risking a page crash.
+              </p>
+            </div>
+            <span className="text-xs font-medium text-[#d97706] bg-[#d97706]/10 px-2.5 py-1 rounded-full">
+              {activeTimeframe.label}
+            </span>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-1 mb-4">
+            {TIMEFRAMES.map((timeframe) => {
+              const isActive = timeframe.days === activeTimeframe.days;
+
+              return (
+                <button
+                  key={timeframe.days}
+                  type="button"
+                  onClick={() => setActiveTimeframe(timeframe)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                    isActive
+                      ? "bg-[#d97706] text-white"
+                      : "bg-[#f8fafc] text-[#64748b] hover:bg-[#d97706]/10 hover:text-[#d97706]"
+                  }`}
+                >
+                  {timeframe.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {loading ? (
+            <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-[#f8fafc] text-sm text-[#64748b]">
+              Loading weight trend...
+            </div>
+          ) : (
+            <SafeTrendChart
+              data={chartData}
+              emptyMessage="Log your first weight entry to see the trend here."
+              valueFormatter={(value) => `${value.toFixed(1)} lbs`}
+            />
+          )}
+        </div>
+
         {/* Summary Stats */}
         {latest !== null && (
           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -188,7 +263,7 @@ export function WeightTrackerPage() {
         )}
 
         {/* Entries */}
-        {logs.length > 0 && (
+        {logs.length > 0 ? (
           <div className="bg-white rounded-lg shadow-md p-4 mb-4">
             <h2 className="text-base font-semibold text-[#1e293b] mb-3">
               Entries
@@ -228,7 +303,12 @@ export function WeightTrackerPage() {
                 })}
             </div>
           </div>
-        )}
+        ) : !loading ? (
+          <div className="bg-white rounded-lg shadow-md p-6 text-center text-sm text-[#64748b]">
+            No weight entries yet. Add one above and the chart will update
+            automatically.
+          </div>
+        ) : null}
       </main>
     </div>
   );

@@ -20,6 +20,7 @@ import {
   getGroupPosts,
   isGroupJoined,
   joinCommunityGroup,
+  leaveCommunityGroup,
   type GroupForumPost,
   updateGroupPost,
 } from "../lib/communityGroups";
@@ -123,6 +124,19 @@ export function GroupForumPage() {
     joinCommunityGroup(group.slug);
     setJoined(true);
     alert(`You joined ${group.name}. You can now chat in this group.`);
+  };
+
+  const handleLeave = () => {
+    if (!group || !joined) return;
+    if (!confirm(`Leave ${group.name}? You can join again later.`)) return;
+
+    leaveCommunityGroup(group.slug);
+    setJoined(false);
+    setShowCreateModal(false);
+    setEditingPostId(null);
+    setEditTitle("");
+    setEditBody("");
+    resetComposer();
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -275,13 +289,21 @@ export function GroupForumPage() {
               </p>
             </div>
             {joined ? (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-[#d97706] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#b45309] flex items-center justify-center gap-2"
-              >
-                <Plus className="size-4" />
-                Create Group Post
-              </button>
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-[#d97706] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#b45309] flex items-center justify-center gap-2"
+                >
+                  <Plus className="size-4" />
+                  Create Group Post
+                </button>
+                <button
+                  onClick={handleLeave}
+                  className="border border-[#d97706]/30 text-[#d97706] px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#d97706]/10"
+                >
+                  Leave Group
+                </button>
+              </div>
             ) : (
               <button
                 onClick={handleJoin}
