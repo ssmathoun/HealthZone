@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Moon, Save, History, Clock } from 'lucide-react';
+import { SafeTrendChart } from "../components/SafeTrendChart";
 
 export function SleepPage() {
   const navigate = useNavigate();
@@ -9,6 +10,7 @@ export function SleepPage() {
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false); // Added to control message color
   const [history, setHistory] = useState<{ hours: number; created_at: string }[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   const API_URL = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/sleep.php";
 
@@ -18,9 +20,13 @@ export function SleepPage() {
       .then(data => { 
         if (Array.isArray(data)) {
           setHistory(data); 
+          return;
         }
+
+        setHistory([]);
       })
-      .catch(() => console.error("Failed to load history"));
+      .catch(() => setHistory([]))
+      .finally(() => setHistoryLoading(false));
   }, []);
 
   const handleSave = async () => {
@@ -61,7 +67,10 @@ export function SleepPage() {
         setMessage("Sleep logged successfully!");
         
         // Optimistic UI Update for instant feedback
-        setHistory([{ hours: totalHours, created_at: new Date().toISOString() }, ...history]);
+        setHistory((current) => [
+          { hours: totalHours, created_at: new Date().toISOString() },
+          ...current,
+        ]);
         
         // Reset form
         setHours("8");
@@ -82,6 +91,35 @@ export function SleepPage() {
     }
   };
 
+  const recentChartData = [...history]
+    .slice(0, 14)
+    .reverse()
+    .reduce<{ label: string; value: number }[]>((points, log) => {
+      const createdAt = new Date(log.created_at);
+      const hoursValue = Number(log.hours);
+
+      if (Number.isNaN(createdAt.getTime()) || !Number.isFinite(hoursValue)) {
+        return points;
+      }
+
+      points.push({
+        label: createdAt.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        value: hoursValue,
+      });
+
+      return points;
+    }, []);
+
+  const latestSleep = history.length > 0 ? Number(history[0].hours) : null;
+  const averageRecentSleep =
+    recentChartData.length > 0
+      ? recentChartData.reduce((sum, point) => sum + point.value, 0) /
+        recentChartData.length
+      : null;
+
   return (
     <div className="min-h-screen bg-[#fdfcfb]">
       <nav className="bg-[#1e293b] text-white p-4 flex items-center gap-4 sticky top-0 z-50 shadow-md">
@@ -91,7 +129,7 @@ export function SleepPage() {
         <h1 className="text-xl font-bold">Sleep Tracker</h1>
       </nav>
 
-      <main className="p-4 max-w-md mx-auto">
+      <main className="p-4 max-w-xl mx-auto">
         {/* Log Sleep Section */}
         <section className="bg-white rounded-lg shadow-md p-6 mb-6 border-t-4 border-[#d97706]">
           <div className="flex items-center gap-2 mb-4">
@@ -149,6 +187,62 @@ export function SleepPage() {
             <p className={`text-center mt-3 font-medium ${isError ? 'text-red-600' : 'text-green-600 animate-pulse'}`}>
               {message}
             </p>
+          )}
+        </section>
+
+        <section className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-[#1e293b]">
+                Sleep Trend
+              </h2>
+              <p className="text-xs text-[#64748b] mt-1">
+                Showing your most recent 14 sleep logs.
+              </p>
+            </div>
+            <span className="text-xs font-medium text-[#d97706] bg-[#d97706]/10 px-2.5 py-1 rounded-full">
+              Last 14
+            </span>
+          </div>
+
+          {latestSleep !== null && (
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="rounded-lg bg-[#f8fafc] p-3 text-center">
+                <p className="text-[10px] text-[#64748b] mb-1">Latest</p>
+                <p className="text-lg font-bold text-[#1e293b]">
+                  {latestSleep.toFixed(1)}
+                </p>
+                <p className="text-[10px] text-[#64748b]">hrs</p>
+              </div>
+              <div className="rounded-lg bg-[#f8fafc] p-3 text-center">
+                <p className="text-[10px] text-[#64748b] mb-1">Average</p>
+                <p className="text-lg font-bold text-[#1e293b]">
+                  {averageRecentSleep === null ? "—" : averageRecentSleep.toFixed(1)}
+                </p>
+                <p className="text-[10px] text-[#64748b]">hrs</p>
+              </div>
+              <div className="rounded-lg bg-[#f8fafc] p-3 text-center">
+                <p className="text-[10px] text-[#64748b] mb-1">Entries</p>
+                <p className="text-lg font-bold text-[#1e293b]">
+                  {history.length}
+                </p>
+                <p className="text-[10px] text-[#64748b]">total</p>
+              </div>
+            </div>
+          )}
+
+          {historyLoading ? (
+            <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-gray-200 bg-[#f8fafc] text-sm text-[#64748b]">
+              Loading sleep trend...
+            </div>
+          ) : (
+            <SafeTrendChart
+              data={recentChartData}
+              emptyMessage="Log some sleep to see your recent trend here."
+              valueFormatter={(value) => `${value.toFixed(1)} hrs`}
+              lineColor="#1e293b"
+              fillColor="rgba(30, 41, 59, 0.24)"
+            />
           )}
         </section>
 

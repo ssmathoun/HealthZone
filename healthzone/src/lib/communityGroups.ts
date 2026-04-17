@@ -101,6 +101,13 @@ export function joinCommunityGroup(groupSlug: string) {
   return nextGroups;
 }
 
+export function leaveCommunityGroup(groupSlug: string) {
+  const joinedGroups = getJoinedGroupSlugs();
+  const nextGroups = joinedGroups.filter((slug) => slug !== groupSlug);
+  writeJson(JOINED_GROUPS_KEY, nextGroups);
+  return nextGroups;
+}
+
 export function getJoinedGroups() {
   const joined = new Set(getJoinedGroupSlugs());
   return COMMUNITY_GROUPS.filter((group) => joined.has(group.slug));

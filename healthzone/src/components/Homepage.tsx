@@ -569,7 +569,7 @@ export function HomePage() {
           <h2 className="text-base font-semibold text-[#1e293b] mb-3">
             Quick Actions
           </h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
               onClick={() => navigate("/log-workout")}
               className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
@@ -590,6 +590,20 @@ export function HomePage() {
             >
               <UtensilsCrossed className="size-6" />
               <span className="text-xs font-medium">Log Meal</span>
+            </button>
+            <button
+              onClick={() => navigate("/sleep")}
+              className="bg-[#334155] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+            >
+              <Moon className="size-6" />
+              <span className="text-xs font-medium">Sleep Tracker</span>
+            </button>
+            <button
+              onClick={() => navigate("/weight-tracker")}
+              className="bg-[#475569] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+            >
+              <Scale className="size-6" />
+              <span className="text-xs font-medium">Weight Tracker</span>
             </button>
             <button
               onClick={() => navigate("/create-recipe")}
