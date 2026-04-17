@@ -1,7 +1,8 @@
 <?php
 require "autoload.php";
 
-header("Access-Control-Allow-Origin: https://aptitude.cse.buffalo.edu");
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+header("Access-Control-Allow-Origin: $origin");
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
@@ -17,13 +18,14 @@ if (!$user_id) {
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        // If view_user_id param is passed, fetch that user's public profile
         $view_id = $_GET['view_user_id'] ?? $_GET['user_id'] ?? null;
+        
         if ($view_id) {
-            $query = "SELECT id, username, email, avatar FROM users WHERE id = :id LIMIT 1";
+            $query = "SELECT id, username, email, avatar, bio FROM users WHERE id = :id LIMIT 1";
             $stm = $connection->prepare($query);
             $stm->execute(['id' => (int)$view_id]);
             $user = $stm->fetch(PDO::FETCH_ASSOC);
+            
             if ($user) {
                 echo json_encode(["status" => "success", "user" => $user]);
             } else {
@@ -32,8 +34,7 @@ try {
             exit;
         }
 
-        // Default: return logged-in user's profile
-        $query = "SELECT username, email, avatar FROM users WHERE id = :id LIMIT 1";
+        $query = "SELECT username, email, avatar, bio FROM users WHERE id = :id LIMIT 1";
         $stm = $connection->prepare($query);
         $stm->execute(['id' => $user_id]);
         $user = $stm->fetch(PDO::FETCH_ASSOC);
@@ -44,6 +45,14 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hasChanged = false;
         $responseMsgs = [];
+
+        if (isset($_POST['bio'])) {
+            $bioText = trim($_POST['bio']);
+            $upd = $connection->prepare("UPDATE users SET bio = :bio WHERE id = :id");
+            $upd->execute(['bio' => $bioText, 'id' => $user_id]);
+            $hasChanged = true;
+            $responseMsgs[] = "Bio updated";
+        }
 
         if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
             $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
@@ -114,3 +123,4 @@ try {
 } catch (PDOException $e) {
     echo json_encode(["status" => "error", "message" => "Database error."]);
 }
+?>
