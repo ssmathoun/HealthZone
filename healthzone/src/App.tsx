@@ -21,6 +21,7 @@ import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { BookmarksPage } from "./pages/BookmarksPage";
 import { ContactPage } from "./pages/ContactPage";
+import { TrainerDirectoryPage } from "./pages/TrainerDirectoryPage";
 import { GroupForumPage } from "./pages/GroupForumPage";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -109,6 +110,7 @@ export default function App() {
                   <Route path="/bookmarks" element={<BookmarksPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                   <Route path="/contact" element={<ContactPage />} />
+                  <Route path="/trainers" element={<TrainerDirectoryPage />} />
                 </Routes>
               </RestTimerProvider>
             </AuthGuard>
