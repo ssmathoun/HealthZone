@@ -5,33 +5,43 @@ export const ProfilePage = () => {
     const [user, setUser] = useState({
         username: '',
         email: '',
-        avatar: ''
+        avatar: '',
+        bio: ''
     });
 
     const [editedUser, setEditedUser] = useState({
         username: '',
-        email: ''
+        email: '',
+        bio: ''
     });
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [message, setMessage] = useState('');
+    
+    const [isEditingBio, setIsEditingBio] = useState(false);
 
     const API_BASE = "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php";
 
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                // No user_id in the URL; server uses session cookie
                 const response = await fetch(API_BASE, { credentials: 'include' });
                 const data = await response.json();
                 if (data.status === 'success') {
-                    setUser(data.user);
+                    setUser({
+                        ...data.user,
+                        bio: data.user.bio || ''
+                    });
                     setEditedUser({
                         username: data.user.username,
-                        email: data.user.email
+                        email: data.user.email,
+                        bio: data.user.bio || ''
                     });
-                    setPreviewUrl(`https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${data.user.avatar}`);
+                    const avatarPath = data.user.avatar
+                        ? `https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${data.user.avatar}`
+                        : 'default_avatar.png';
+                    setPreviewUrl(avatarPath);
                 }
             } catch (err) {
                 console.error("Failed to load user data", err);
@@ -56,10 +66,12 @@ export const ProfilePage = () => {
         if (selectedFile) formData.append('avatar', selectedFile);
         if (editedUser.username !== user.username) formData.append('username', editedUser.username);
         if (editedUser.email !== user.email) formData.append('email', editedUser.email);
+        
+        if (editedUser.bio !== user.bio) formData.append('bio', editedUser.bio);
 
-        // Check if there are any changes
-        if (!selectedFile && editedUser.username === user.username && editedUser.email === user.email) {
+        if (!selectedFile && editedUser.username === user.username && editedUser.email === user.email && editedUser.bio === user.bio) {
             setMessage('No changes made.');
+            setIsEditingBio(false);
             return;
         }
 
@@ -76,8 +88,11 @@ export const ProfilePage = () => {
                 setUser({
                     ...user,
                     username: editedUser.username,
-                    email: editedUser.email
+                    email: editedUser.email,
+                    bio: editedUser.bio
                 });
+                setIsEditingBio(false);
+                
                 if (result.avatar_url) {
                     setPreviewUrl(`https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${result.avatar_url}`);
                 }
@@ -104,6 +119,44 @@ export const ProfilePage = () => {
 
                     <label className="profile-label">Email</label>
                     <input className="profile-input" type="email" value={editedUser.email} onChange={(e) => setEditedUser({...editedUser, email: e.target.value})} />
+
+                    <div style={{ marginTop: '15px', marginBottom: '15px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <label className="profile-label" style={{ marginBottom: 0 }}>Bio</label>
+                            {!isEditingBio && (
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsEditingBio(true)}
+                                    style={{ background: 'none', border: 'none', color: '#d97706', cursor: 'pointer', fontSize: '14px' }}
+                                >
+                                    {user.bio ? 'Edit Bio' : 'Add Bio'}
+                                </button>
+                            )}
+                        </div>
+
+                        {isEditingBio ? (
+                            <textarea 
+                                className="profile-input" 
+                                value={editedUser.bio} 
+                                onChange={(e) => setEditedUser({...editedUser, bio: e.target.value})}
+                                placeholder="Tell us about your fitness journey..."
+                                rows={3}
+                                style={{ resize: 'vertical', marginTop: '8px' }}
+                            />
+                        ) : (
+                            <p style={{ 
+                                color: user.bio ? '#1e293b' : '#64748b', 
+                                fontSize: '14px', 
+                                marginTop: '8px',
+                                padding: '10px',
+                                backgroundColor: '#f8fafc',
+                                borderRadius: '6px',
+                                minHeight: '40px'
+                            }}>
+                                {user.bio || "No bio added yet."}
+                            </p>
+                        )}
+                    </div>
 
                     {message && <p className="status-message">{message}</p>}
 
