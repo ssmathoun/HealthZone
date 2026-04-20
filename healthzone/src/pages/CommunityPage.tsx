@@ -135,6 +135,9 @@ export function CommunityPage() {
   const [viewingProfile, setViewingProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
+  // Follow state
+  const [followingUsers, setFollowingUsers] = useState<Set<number>>(new Set());
+
   useEffect(() => {
     fetch(`${API_BASE}/profile.php`, { credentials: "include" })
       .then((res) => res.json())
@@ -221,6 +224,15 @@ export function CommunityPage() {
 
   useEffect(() => {
     fetchPosts();
+    // Fetch who the current user follows
+    fetch(`${API_BASE}/follows.php?action=get_following`, { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success' && Array.isArray(data.following)) {
+          setFollowingUsers(new Set(data.following.map((u: any) => Number(u.user_id))));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleLike = async (postId: number) => {
@@ -550,6 +562,34 @@ const viewUserProfile = async (userId: number | string | undefined, username: st
   setProfileLoading(false);
 };
 
+  // Follow / Unfollow
+  const handleToggleFollow = async (userId: number | string) => {
+    const id = Number(userId);
+    if (!id) return;
+    const isFollowing = followingUsers.has(id);
+    const action = isFollowing ? 'unfollow' : 'follow';
+    // Optimistic update
+    setFollowingUsers(prev => {
+      const next = new Set(prev);
+      if (isFollowing) next.delete(id); else next.add(id);
+      return next;
+    });
+    try {
+      await fetch(`${API_BASE}/follows.php?action=${action}`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: id }),
+      });
+    } catch {
+      // Revert on error
+      setFollowingUsers(prev => {
+        const next = new Set(prev);
+        if (isFollowing) next.add(id); else next.delete(id);
+        return next;
+      });
+    }
+  };
+
   const isAuthor = (post: ForumPost) => {
     if (!currentUser) return false;
     return (
@@ -766,6 +806,20 @@ const viewUserProfile = async (userId: number | string | undefined, username: st
                               </p>
                             </div>
                           </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {/* Follow/Unfollow button - only on other users' posts */}
+                            {currentUser && Number(post.user_id) !== Number(currentUser.id) && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleToggleFollow(post.user_id!); }}
+                                className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                                  followingUsers.has(Number(post.user_id))
+                                    ? 'bg-[#d97706] text-white'
+                                    : 'border border-[#d97706] text-[#d97706] hover:bg-[#d97706] hover:text-white'
+                                }`}
+                              >
+                                {followingUsers.has(Number(post.user_id)) ? 'Following' : 'Follow'}
+                              </button>
+                            )}
                           {isAuthor(post) && (
                             <div className="flex items-center gap-1 shrink-0">
                               <button
@@ -783,6 +837,7 @@ const viewUserProfile = async (userId: number | string | undefined, username: st
                               </button>
                             </div>
                           )}
+                          </div>
                         </div>
 
                         {post.title && (

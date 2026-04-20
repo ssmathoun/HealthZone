@@ -132,7 +132,29 @@ try {
             'media_url' => $media_url,
             'media_type' => $media_type
         ]);
-        echo json_encode(["status" => "success", "id" => $connection->lastInsertId()]);
+        $new_post_id = $connection->lastInsertId();
+
+        // Notify followers that this user posted
+        try {
+            $followers = $connection->prepare("SELECT follower_id FROM follows WHERE following_id = :uid");
+            $followers->execute(['uid' => $user_id]);
+            $followerList = $followers->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($followerList as $f) {
+                $notif = $connection->prepare("
+                    INSERT INTO notifications (user_id, from_user_id, type, message, post_id, is_read, created_at)
+                    VALUES (:uid, :from_uid, 'new_post', 'posted something new', :pid, 0, NOW())
+                ");
+                $notif->execute([
+                    'uid' => $f['follower_id'],
+                    'from_uid' => $user_id,
+                    'pid' => $new_post_id
+                ]);
+            }
+        } catch (PDOException $e) {
+            // Don't break post creation if notification fails
+        }
+
+        echo json_encode(["status" => "success", "id" => $new_post_id]);
         exit;
     }
 
