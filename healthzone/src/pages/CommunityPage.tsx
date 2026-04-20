@@ -530,21 +530,25 @@ export function CommunityPage() {
     setDeletingCommentId(null);
   };
 
-  // View a user's profile bio
-  const viewUserProfile = async (userId: number | string | undefined, username: string) => {
-    const id = userId ? Number(userId) : null;
-    if (!id) return;
-    setProfileLoading(true);
-    setViewingProfile({ username, avatar: null, email: '' });
-    try {
-      const res = await fetch(`${API_BASE}/profile.php?user_id=${id}`, { credentials: 'include' });
-      const data = await res.json();
-      if (data.status === 'success' && data.user) {
-        setViewingProfile(data.user);
-      }
-    } catch {}
-    setProfileLoading(false);
-  };
+// View a user's profile bio
+const viewUserProfile = async (userId: number | string | undefined, username: string) => {
+  const id = userId ? Number(userId) : null;
+  if (!id) return;
+  setProfileLoading(true);
+  
+  // Include bio in the initial blank state
+  setViewingProfile({ username, avatar: null, email: '', bio: '' }); 
+  
+  try {
+    // Use view_user_id to fetch the public profile
+    const res = await fetch(`${API_BASE}/profile.php?view_user_id=${id}`, { credentials: 'include' });
+    const data = await res.json();
+    if (data.status === 'success' && data.user) {
+      setViewingProfile(data.user);
+    }
+  } catch {}
+  setProfileLoading(false);
+};
 
   const isAuthor = (post: ForumPost) => {
     if (!currentUser) return false;
@@ -1332,11 +1336,15 @@ export function CommunityPage() {
                 {viewingProfile.email && (
                   <p className="text-sm text-[#64748b] mb-4">{viewingProfile.email}</p>
                 )}
+                
+                {/* Dynamically display the Bio */}
                 <div className="bg-[#fdfcfb] rounded-lg p-4 border border-gray-200 text-left">
-                  <p className="text-sm text-[#64748b]">
-                    Member of the HealthZone community
+                  <h4 className="text-xs font-semibold text-[#1e293b] uppercase tracking-wider mb-2">About</h4>
+                  <p className="text-sm text-[#475569] whitespace-pre-wrap">
+                    {viewingProfile.bio || "This user hasn't added a bio yet."}
                   </p>
                 </div>
+                
               </div>
             )}
           </div>
