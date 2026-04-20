@@ -34,7 +34,7 @@ try {
             exit;
         }
 
-        $query = "SELECT username, email, avatar, bio FROM users WHERE id = :id LIMIT 1";
+        $query = "SELECT id, username, email, avatar, bio FROM users WHERE id = :id LIMIT 1";
         $stm = $connection->prepare($query);
         $stm->execute(['id' => $user_id]);
         $user = $stm->fetch(PDO::FETCH_ASSOC);
