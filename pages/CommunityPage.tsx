@@ -5,7 +5,6 @@ import {
   MessageCircle,
   Heart,
   Share2,
-  Trophy,
   Calendar,
   ArrowLeft,
   Trash2,
@@ -17,7 +16,16 @@ import {
   Send,
   Search,
   Bookmark,
+  ExternalLink,
 } from "lucide-react";
+import {
+  COMMUNITY_GROUPS,
+  getAvailableGroups,
+  getJoinedGroups,
+  isGroupJoined,
+  joinCommunityGroup,
+  leaveCommunityGroup,
+} from "../lib/communityGroups";
 
 const API_BASE =
   "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php";
@@ -43,13 +51,6 @@ type ForumPost = {
   can_delete?: boolean;
   is_bookmarked?: boolean;
 };
-
-const groups = [
-  { id: 1, name: "FitSquad", members: 24, activity: "Basketball" },
-  { id: 2, name: "Runners United", members: 18, activity: "Running" },
-  { id: 3, name: "Meal Preppers", members: 32, activity: "Nutrition" },
-  { id: 4, name: "Yoga Warriors", members: 15, activity: "Yoga" },
-];
 
 function buildAssetUrl(path?: string | null) {
   if (!path) return "";
@@ -127,10 +128,15 @@ export function CommunityPage() {
 
   const [searchUser, setSearchUser] = useState("");
   const [searchTopic, setSearchTopic] = useState("");
+  const [joinedGroups, setJoinedGroups] = useState(getJoinedGroups());
+  const [availableGroups, setAvailableGroups] = useState(getAvailableGroups());
 
   // Profile bio modal state
   const [viewingProfile, setViewingProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+
+  // Follow state
+  const [followingUsers, setFollowingUsers] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetch(`${API_BASE}/profile.php`, { credentials: "include" })
@@ -140,6 +146,34 @@ export function CommunityPage() {
       })
       .catch(() => {});
   }, []);
+
+  const refreshGroupLists = () => {
+    setJoinedGroups(getJoinedGroups());
+    setAvailableGroups(getAvailableGroups());
+  };
+
+  const handleJoinGroup = (groupSlug: string) => {
+    const group = COMMUNITY_GROUPS.find((entry) => entry.slug === groupSlug);
+    if (!group) return;
+    if (!isGroupJoined(group.slug)) {
+      joinCommunityGroup(group.slug);
+      refreshGroupLists();
+    }
+    alert(`You joined ${group.name}. You can now chat in the group.`);
+  };
+
+  const handleLeaveGroup = (groupSlug: string) => {
+    const group = COMMUNITY_GROUPS.find((entry) => entry.slug === groupSlug);
+    if (!group || !isGroupJoined(group.slug)) return;
+    if (!confirm(`Leave ${group.name}? You can join again later.`)) return;
+
+    leaveCommunityGroup(group.slug);
+    refreshGroupLists();
+  };
+
+  const openGroupForum = (groupSlug: string) => {
+    navigate(`/community/group/${groupSlug}`);
+  };
 
   const fetchPosts = () => {
     setLoading(true);
@@ -190,6 +224,15 @@ export function CommunityPage() {
 
   useEffect(() => {
     fetchPosts();
+    // Fetch who the current user follows
+    fetch(`${API_BASE}/follows.php?action=get_following`, { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success' && Array.isArray(data.following)) {
+          setFollowingUsers(new Set(data.following.map((u: any) => Number(u.user_id))));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleLike = async (postId: number) => {
@@ -499,20 +542,52 @@ export function CommunityPage() {
     setDeletingCommentId(null);
   };
 
-  // View a user's profile bio
-  const viewUserProfile = async (userId: number | string | undefined, username: string) => {
-    const id = userId ? Number(userId) : null;
+// View a user's profile bio
+const viewUserProfile = async (userId: number | string | undefined, username: string) => {
+  const id = userId ? Number(userId) : null;
+  if (!id) return;
+  setProfileLoading(true);
+  
+  // Include bio in the initial blank state
+  setViewingProfile({ username, avatar: null, email: '', bio: '' }); 
+  
+  try {
+    // Use view_user_id to fetch the public profile
+    const res = await fetch(`${API_BASE}/profile.php?view_user_id=${id}`, { credentials: 'include' });
+    const data = await res.json();
+    if (data.status === 'success' && data.user) {
+      setViewingProfile(data.user);
+    }
+  } catch {}
+  setProfileLoading(false);
+};
+
+  // Follow / Unfollow
+  const handleToggleFollow = async (userId: number | string) => {
+    const id = Number(userId);
     if (!id) return;
-    setProfileLoading(true);
-    setViewingProfile({ username, avatar: null, email: '' });
+    const isFollowing = followingUsers.has(id);
+    const action = isFollowing ? 'unfollow' : 'follow';
+    // Optimistic update
+    setFollowingUsers(prev => {
+      const next = new Set(prev);
+      if (isFollowing) next.delete(id); else next.add(id);
+      return next;
+    });
     try {
-      const res = await fetch(`${API_BASE}/profile.php?user_id=${id}`, { credentials: 'include' });
-      const data = await res.json();
-      if (data.status === 'success' && data.user) {
-        setViewingProfile(data.user);
-      }
-    } catch {}
-    setProfileLoading(false);
+      await fetch(`${API_BASE}/follows.php?action=${action}`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: id }),
+      });
+    } catch {
+      // Revert on error
+      setFollowingUsers(prev => {
+        const next = new Set(prev);
+        if (isFollowing) next.add(id); else next.delete(id);
+        return next;
+      });
+    }
   };
 
   const isAuthor = (post: ForumPost) => {
@@ -731,6 +806,20 @@ export function CommunityPage() {
                               </p>
                             </div>
                           </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {/* Follow/Unfollow button - only on other users' posts */}
+                            {currentUser && Number(post.user_id) !== Number(currentUser.id) && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleToggleFollow(post.user_id!); }}
+                                className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                                  followingUsers.has(Number(post.user_id))
+                                    ? 'bg-[#d97706] text-white'
+                                    : 'border border-[#d97706] text-[#d97706] hover:bg-[#d97706] hover:text-white'
+                                }`}
+                              >
+                                {followingUsers.has(Number(post.user_id)) ? 'Following' : 'Follow'}
+                              </button>
+                            )}
                           {isAuthor(post) && (
                             <div className="flex items-center gap-1 shrink-0">
                               <button
@@ -748,6 +837,7 @@ export function CommunityPage() {
                               </button>
                             </div>
                           )}
+                          </div>
                         </div>
 
                         {post.title && (
@@ -976,29 +1066,89 @@ export function CommunityPage() {
               <div className="bg-white rounded-lg shadow-md p-4">
                 <h2 className="font-semibold text-[#1e293b] mb-3 flex items-center gap-2">
                   <Users className="size-5 text-[#d97706]" />
-                  My Groups
+                  Groups
                 </h2>
-                <div className="space-y-3">
-                  {groups.map((g) => (
-                    <div
-                      key={g.id}
-                      className="flex items-center justify-between p-3 bg-[#fdfcfb] rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                    >
-                      <div>
-                        <p className="font-medium text-[#1e293b] text-sm">
-                          {g.name}
-                        </p>
-                        <p className="text-xs text-[#64748b]">
-                          {g.members} members
-                        </p>
-                      </div>
-                      <Users className="size-4 text-[#d97706]" />
+
+                {joinedGroups.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b] mb-2">
+                      Your Groups
+                    </p>
+                    <div className="space-y-2">
+                      {joinedGroups.map((group) => (
+                        <div
+                          key={group.slug}
+                          className="w-full flex items-center justify-between gap-3 p-3 bg-[#fdfcfb] rounded-lg border border-gray-100"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium text-[#1e293b] text-sm">
+                              {group.name}
+                            </p>
+                            <p className="text-xs text-[#64748b]">
+                              Joined group
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => openGroupForum(group.slug)}
+                              className="p-2 text-[#d97706] hover:bg-[#d97706]/10 rounded-lg transition-colors"
+                              aria-label={`Open ${group.name}`}
+                              title={`Open ${group.name}`}
+                            >
+                              <ExternalLink className="size-4" />
+                            </button>
+                            <button
+                              onClick={() => handleLeaveGroup(group.slug)}
+                              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[#d97706]/30 text-[#d97706] hover:bg-[#d97706]/10 transition-colors"
+                            >
+                              Leave
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                    Discover Groups
+                  </p>
+                  {availableGroups.length === 0 ? (
+                    <div className="p-3 bg-[#fdfcfb] rounded-lg">
+                      <p className="text-sm text-[#64748b]">
+                        You have joined all available groups.
+                      </p>
+                    </div>
+                  ) : (
+                    availableGroups.map((group) => (
+                      <div
+                        key={group.slug}
+                        className="p-3 bg-[#fdfcfb] rounded-lg border border-gray-100"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-[#1e293b] text-sm">
+                              {group.name}
+                            </p>
+                            <p className="text-xs text-[#64748b] mb-1">
+                              {group.focus}
+                            </p>
+                            <p className="text-xs text-[#64748b]">
+                              {group.description}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleJoinGroup(group.slug)}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#d97706] text-white hover:bg-[#b45309] transition-colors whitespace-nowrap"
+                          >
+                            Join
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-                <button className="w-full mt-3 text-[#d97706] text-sm font-medium hover:text-[#b45309]">
-                  + Join New Group
-                </button>
               </div>
 
               <div className="bg-white rounded-lg shadow-md p-4">
@@ -1241,11 +1391,15 @@ export function CommunityPage() {
                 {viewingProfile.email && (
                   <p className="text-sm text-[#64748b] mb-4">{viewingProfile.email}</p>
                 )}
+                
+                {/* Dynamically display the Bio */}
                 <div className="bg-[#fdfcfb] rounded-lg p-4 border border-gray-200 text-left">
-                  <p className="text-sm text-[#64748b]">
-                    Member of the HealthZone community
+                  <h4 className="text-xs font-semibold text-[#1e293b] uppercase tracking-wider mb-2">About</h4>
+                  <p className="text-sm text-[#475569] whitespace-pre-wrap">
+                    {viewingProfile.bio || "This user hasn't added a bio yet."}
                   </p>
                 </div>
+                
               </div>
             )}
           </div>
