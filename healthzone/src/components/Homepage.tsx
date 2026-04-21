@@ -23,6 +23,7 @@ import {
   MapPin,
   Star,
 } from "lucide-react";
+import { UPCOMING_ACTIVITIES } from "../lib/activities";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -892,41 +893,17 @@ export function HomePage() {
               </h2>
             </div>
             <button
-              onClick={() => navigate("/community")}
+              onClick={() => navigate("/activities")}
               className="text-xs text-[#d97706] font-medium"
             >
               See All
             </button>
           </div>
           <div className="space-y-2">
-            {[
-              {
-                name: "Basketball Game",
-                group: "FitSquad",
-                time: "Today, 6:00 PM",
-                location: "Alumni Arena",
-                participants: 8,
-                icon: "🏀",
-              },
-              {
-                name: "Morning Run",
-                group: "Runners United",
-                time: "Tomorrow, 6:30 AM",
-                location: "Delaware Park",
-                participants: 12,
-                icon: "🏃",
-              },
-              {
-                name: "Yoga Session",
-                group: "Yoga Warriors",
-                time: "Sat, 9:00 AM",
-                location: "Student Union",
-                participants: 15,
-                icon: "🧘",
-              },
-            ].map((activity) => (
+            {UPCOMING_ACTIVITIES.slice(0, 3).map((activity) => (
               <div
-                key={activity.name}
+                key={activity.id}
+                onClick={() => navigate("/activities")}
                 className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 border border-gray-200 rounded-lg hover:border-[#d97706] transition-colors cursor-pointer"
               >
                 <div className="text-xl sm:text-2xl flex-shrink-0">
@@ -937,7 +914,7 @@ export function HomePage() {
                     {activity.name}
                   </p>
                   <p className="text-[10px] sm:text-xs text-[#64748b] truncate">
-                    {activity.group} • {activity.time}
+                    {activity.group} • {activity.schedule}
                   </p>
                   <p className="text-[10px] sm:text-xs text-[#64748b] flex items-center gap-1 mt-0.5 truncate">
                     <MapPin className="size-3 flex-shrink-0" />
