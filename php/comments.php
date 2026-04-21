@@ -69,28 +69,19 @@ try {
 
         // Create notification for the post author (if not commenting on own post)
         try {
-            // Find who owns the post - check multiple possible table names
-            $post_table = null;
-            foreach (['posts', 'forum_posts', 'community_posts'] as $tbl) {
-                $check = $connection->prepare("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :t");
-                $check->execute(['t' => $tbl]);
-                if ($check->fetchColumn() > 0) { $post_table = $tbl; break; }
-            }
-            if ($post_table) {
-                $post_owner = $connection->prepare("SELECT user_id FROM {$post_table} WHERE id = :pid LIMIT 1");
-                $post_owner->execute(['pid' => $post_id]);
-                $owner = $post_owner->fetch(PDO::FETCH_ASSOC);
-                if ($owner && (int)$owner['user_id'] !== (int)$user_id) {
-                    $notif = $connection->prepare("
-                        INSERT INTO notifications (user_id, from_user_id, type, message, post_id, is_read, created_at)
-                        VALUES (:uid, :from_uid, 'comment', 'commented on your post', :pid, 0, NOW())
-                    ");
-                    $notif->execute([
-                        'uid' => $owner['user_id'],
-                        'from_uid' => $user_id,
-                        'pid' => $post_id
-                    ]);
-                }
+            $post_owner = $connection->prepare("SELECT user_id FROM posts WHERE id = :pid LIMIT 1");
+            $post_owner->execute(['pid' => $post_id]);
+            $owner = $post_owner->fetch(PDO::FETCH_ASSOC);
+            if ($owner && (int)$owner['user_id'] !== (int)$user_id) {
+                $notif = $connection->prepare("
+                    INSERT INTO notifications (user_id, from_user_id, type, message, post_id, is_read, created_at)
+                    VALUES (:uid, :from_uid, 'comment', 'commented on your post', :pid, 0, NOW())
+                ");
+                $notif->execute([
+                    'uid' => $owner['user_id'],
+                    'from_uid' => $user_id,
+                    'pid' => $post_id
+                ]);
             }
         } catch (PDOException $e) {
             // Notification creation failure shouldn't break the comment

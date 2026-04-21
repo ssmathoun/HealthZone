@@ -17,7 +17,7 @@ try {
     // GET POSTS
     if ($action === 'get_posts') {
         $stm = $connection->prepare("
-            SELECT p.id, p.user_id, p.title, p.body, p.media_url, p.media_type, p.created_at, u.username,
+            SELECT p.id, p.user_id, p.title, p.body, p.media_url, p.media_type, p.created_at, u.username, u.avatar,
                    (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
                    (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = p.id) AS likes,
                    EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = :uid1) AS liked_by_user,
@@ -69,8 +69,24 @@ try {
             $ins = $connection->prepare("INSERT INTO post_likes (user_id, post_id) VALUES (:uid, :pid)");
             $ins->execute(['uid' => $user_id, 'pid' => $post_id]);
             $is_liked = true;
+
+            // Notify the post owner (skip if liking own post)
+            try {
+                $owner = $connection->prepare("SELECT user_id FROM posts WHERE id = :pid LIMIT 1");
+                $owner->execute(['pid' => $post_id]);
+                $post = $owner->fetch(PDO::FETCH_ASSOC);
+                if ($post && (int)$post['user_id'] !== (int)$user_id) {
+                    $notif = $connection->prepare("
+                        INSERT INTO notifications (user_id, from_user_id, type, message, post_id, is_read, created_at)
+                        VALUES (:uid, :from_uid, 'like', 'liked your post', :pid, 0, NOW())
+                    ");
+                    $notif->execute(['uid' => $post['user_id'], 'from_uid' => $user_id, 'pid' => $post_id]);
+                }
+            } catch (PDOException $e) {
+                // Don't break the like if notification fails
+            }
         }
-    
+
         echo json_encode(["status" => "success", "liked" => $is_liked]);
         exit;
     }
