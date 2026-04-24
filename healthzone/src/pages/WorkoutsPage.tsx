@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Filter,
   Heart,
+  Trash2
 } from "lucide-react";
 
 export function WorkoutsPage() {
@@ -18,26 +19,26 @@ export function WorkoutsPage() {
   const [activeTab, setActiveTab] = useState<"history" | "browse">("browse");
 
   const [trainerWorkouts, setTrainerWorkouts] = useState<any[]>([]);
-
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
   const [workoutInProgress, setWorkoutInProgress] = useState(false);
-  const [completedSets, setCompletedSets] = useState<{
-    [key: string]: boolean;
-  }>({});
+  const [completedSets, setCompletedSets] = useState<{ [key: string]: boolean }>({});
   const [workoutComplete, setWorkoutComplete] = useState(false);
 
   const [showSortModal, setShowSortModal] = useState(false);
-  const [sortBy, setSortBy] = useState("date"); // 'date', 'calories', 'duration', 'exercises'
+  const [sortBy, setSortBy] = useState("date"); 
   const [filterBy, setFilterBy] = useState("All");
 
   const [completedWorkouts, setCompletedWorkouts] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
+  const [workoutToDelete, setWorkoutToDelete] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
   const fetchHistory = () => {
     setHistoryLoading(true);
     fetch(
       "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_history",
-      { credentials: "include" },
+      { credentials: "include" }
     )
       .then((res) => res.json())
       .then((data) => {
@@ -49,36 +50,30 @@ export function WorkoutsPage() {
       .finally(() => setHistoryLoading(false));
   };
 
-  // Stats derived from real history
   const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const thisWeekCount = completedWorkouts.filter((w) => {
     if (!w.completed_at) return false;
     return new Date(w.completed_at).getTime() >= sevenDaysAgo;
   }).length;
+  
   const totalMinutes = completedWorkouts.reduce(
     (sum, w) => sum + (Number(w.duration) || 0),
-    0,
+    0
   );
+  
   const totalCalories = completedWorkouts.reduce(
     (sum, w) => sum + (Number(w.calories) || 0),
-    0,
+    0
   );
 
   function formatWorkoutDate(completed_at: string | null | undefined): string {
     if (!completed_at) return "";
     const d = new Date(completed_at);
     const now = new Date();
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    ).getTime();
-    const dStart = new Date(
-      d.getFullYear(),
-      d.getMonth(),
-      d.getDate(),
-    ).getTime();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const diffDays = Math.round((todayStart - dStart) / 86400000);
+    
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -86,9 +81,18 @@ export function WorkoutsPage() {
   }
 
   useEffect(() => {
+    fetch("https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/profile.php", { credentials: "include" })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {});
+
     fetch(
       "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_premade_workouts",
-      { credentials: "include" },
+      { credentials: "include" }
     )
       .then((res) => res.json())
       .then((data) => {
@@ -99,10 +103,7 @@ export function WorkoutsPage() {
     fetchHistory();
   }, []);
 
-  const handleToggleFavorite = async (
-    e: React.MouseEvent,
-    workoutId: number,
-  ) => {
+  const handleToggleFavorite = async (e: React.MouseEvent, workoutId: number) => {
     e.stopPropagation();
     try {
       const res = await fetch(
@@ -112,14 +113,14 @@ export function WorkoutsPage() {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ workout_id: workoutId }),
-        },
+        }
       );
       const data = await res.json();
       if (data.status === "success") {
         setTrainerWorkouts((prev) =>
           prev.map((w) =>
-            w.id === workoutId ? { ...w, is_favorite: data.is_favorite } : w,
-          ),
+            w.id === workoutId ? { ...w, is_favorite: data.is_favorite } : w
+          )
         );
       }
     } catch (err) {
@@ -127,10 +128,38 @@ export function WorkoutsPage() {
     }
   };
 
+  const handleDeleteWorkout = async () => {
+    if (!workoutToDelete) return;
+
+    try {
+      const response = await fetch(
+        "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=delete_workout",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workout_id: workoutToDelete.id }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.status === "success") {
+        setTrainerWorkouts((prev) => prev.filter((w) => w.id !== workoutToDelete.id));
+        setWorkoutToDelete(null);
+      } else {
+        alert("Failed to delete workout: " + data.message);
+      }
+    } catch (error) {
+      console.error("Error deleting workout:", error);
+      alert("Network error while trying to delete workout.");
+    }
+  };
+
   const processedWorkouts = [...trainerWorkouts]
     .filter((w) => {
       if (filterBy === "All") return true;
-      if (filterBy === "Favorites") return !!w.is_favorite; // Filter for test #1 step 5
+      if (filterBy === "Favorites") return !!w.is_favorite; 
       return w.difficulty === filterBy;
     })
     .sort((a, b) => {
@@ -158,7 +187,7 @@ export function WorkoutsPage() {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ workout_id: selectedWorkout.id }),
-        },
+        }
       );
 
       const data = await response.json();
@@ -182,6 +211,13 @@ export function WorkoutsPage() {
     setWorkoutComplete(false);
   };
 
+  const isWorkoutAuthor = (workout: any) => {
+    if (!currentUser) return false;
+    const matchUsername = workout.trainer?.toLowerCase() === currentUser.username?.toLowerCase();
+    const matchId = String(workout.trainer_id) === String(currentUser.id);
+    return matchUsername || matchId;
+  };
+
   return (
     <div className="min-h-screen bg-[#fdfcfb]">
       <nav className="bg-[#1e293b] sticky top-0 z-50 shadow-md">
@@ -202,12 +238,14 @@ export function WorkoutsPage() {
           <div className="w-10"></div>
         </div>
       </nav>
+      
       <main className="px-4 py-6">
         <div className="max-w-4xl mx-auto">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-[#1e293b] mb-2">Workouts</h1>
             <p className="text-[#64748b]">Track your training progress</p>
           </div>
+          
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="bg-white rounded-lg shadow-md p-4">
               <div className="flex items-center justify-between">
@@ -246,6 +284,7 @@ export function WorkoutsPage() {
               </div>
             </div>
           </div>
+          
           <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-6">
             <button
               onClick={() => setActiveTab("browse")}
@@ -292,24 +331,38 @@ export function WorkoutsPage() {
                 ) : (
                   processedWorkouts.map((w) => (
                     <div key={w.id} className="relative group">
-                      <button
-                        onClick={(e) => handleToggleFavorite(e, w.id)}
-                        className="absolute top-3 right-3 z-30 p-2 bg-white rounded-full shadow-md border border-gray-100 hover:scale-110 transition-all active:scale-95"
-                        title={w.is_favorite ? "Unfavorite" : "Favorite"}
-                      >
-                        <Heart
-                          className={`size-5 transition-colors ${w.is_favorite ? "fill-[#d97706] text-[#d97706]" : "text-gray-300"}`}
-                        />
-                      </button>
+                      
+                      <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
+                        <button
+                          onClick={(e) => handleToggleFavorite(e, w.id)}
+                          className="p-2 bg-white rounded-full shadow-md border border-gray-100 hover:scale-110 transition-all active:scale-95"
+                          title={w.is_favorite ? "Unfavorite" : "Favorite"}
+                        >
+                          <Heart
+                            className={`size-5 transition-colors ${w.is_favorite ? "fill-[#d97706] text-[#d97706]" : "text-gray-300"}`}
+                          />
+                        </button>
+                        
+                        {isWorkoutAuthor(w) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setWorkoutToDelete(w);
+                            }}
+                            className="p-2 bg-white rounded-full shadow-md border border-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-400 hover:scale-110 transition-all active:scale-95"
+                            title="Delete Workout"
+                          >
+                            <Trash2 className="size-5" />
+                          </button>
+                        )}
+                      </div>
 
                       <div
                         onClick={() => setSelectedWorkout(w)}
                         className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg hover:border-[#d97706] border border-transparent transition-all cursor-pointer"
                       >
-                        <div className="flex items-start justify-between mb-2 pr-10">
-                          <div className="flex-1 min-w-0 pr-10">
-                            {" "}
-                            {/* pr-10 ensures text doesn't hide behind the heart */}
+                        <div className="flex items-start justify-between mb-2 pr-24">
+                          <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-[#1e293b]">
                               {w.name}
                             </h3>
@@ -418,6 +471,42 @@ export function WorkoutsPage() {
         </div>
       </main>
 
+      {/* MODALS */}
+
+      {workoutToDelete && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4"
+          onClick={() => setWorkoutToDelete(null)}
+        >
+          <div 
+            className="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="size-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-[#1e293b] mb-2">Delete Workout?</h3>
+            <p className="text-sm text-[#64748b] mb-6">
+              Are you sure you want to permanently delete <strong>{workoutToDelete.name}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setWorkoutToDelete(null)}
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-[#1e293b] rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteWorkout}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showSortModal && (
         <div
           className="fixed inset-0 bg-black/60 z-[60] flex items-end sm:items-center justify-center p-4"
@@ -506,9 +595,6 @@ export function WorkoutsPage() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* EXISTING WORKOUT EXECUTION MODAL */}
-      {/* ========================================================================= */}
       {selectedWorkout && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -588,7 +674,7 @@ export function WorkoutsPage() {
                     selectedWorkout.exercises.map((ex: any, idx: number) => {
                       const allDone = Array.from(
                         { length: ex.sets },
-                        (_, s) => completedSets[`${idx}-${s}`],
+                        (_, s) => completedSets[`${idx}-${s}`]
                       ).every(Boolean);
                       return (
                         <div
@@ -633,13 +719,9 @@ export function WorkoutsPage() {
                 </div>
                 {(() => {
                   const total = selectedWorkout.exercises
-                    ? selectedWorkout.exercises.reduce(
-                        (a: number, e: any) => a + e.sets,
-                        0,
-                      )
+                    ? selectedWorkout.exercises.reduce((a: number, e: any) => a + e.sets, 0)
                     : 0;
-                  const done =
-                    Object.values(completedSets).filter(Boolean).length;
+                  const done = Object.values(completedSets).filter(Boolean).length;
                   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
                   return (
                     <div className="mb-4">
