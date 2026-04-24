@@ -30,6 +30,11 @@ try {
         ");
         $stm->execute(['post_id' => $post_id]);
         $comments = $stm->fetchAll(PDO::FETCH_ASSOC);
+        // Mark whether the logged-in user can edit/delete each comment
+        foreach ($comments as &$comment) {
+            $comment['can_delete'] = ($user_id !== null && (int)$comment['user_id'] === (int)$user_id);
+        }
+        unset($comment);
         echo json_encode(["status" => "success", "comments" => $comments]);
         exit;
     }
