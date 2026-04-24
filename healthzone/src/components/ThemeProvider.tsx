@@ -12,7 +12,13 @@ const getStoredTheme = (): Theme => {
     return "light";
   }
 
-  return window.localStorage.getItem(STORAGE_KEY) === "dark" ? "dark" : "light";
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === "dark"
+      ? "dark"
+      : "light";
+  } catch {
+    return "light";
+  }
 };
 
 const applyTheme = (theme: Theme) => {
@@ -29,7 +35,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
 
     applyTheme(theme);
-    window.localStorage.setItem(STORAGE_KEY, theme);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+      // Ignore storage failures so the app still renders in restricted browsers.
+    }
   }, [theme]);
 
   const setTheme = (nextTheme: Theme) => {
