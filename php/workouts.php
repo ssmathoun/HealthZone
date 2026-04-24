@@ -207,6 +207,48 @@ try {
         exit;
     }
 
+    if ($method === 'POST' && $action === 'delete_workout') {
+        $workout_id = $data['workout_id'] ?? null;
+
+        if (empty($workout_id) || empty($current_user_id)) {
+            echo json_encode(["status" => "error", "message" => "Workout ID is required"]);
+            exit;
+        }
+
+        $checkStm = $connection->prepare("SELECT trainer_id FROM workouts WHERE id = :wid");
+        $checkStm->execute(['wid' => $workout_id]);
+        $workout = $checkStm->fetch(PDO::FETCH_ASSOC);
+
+        if (!$workout) {
+            echo json_encode(["status" => "error", "message" => "Workout not found"]);
+            exit;
+        }
+
+        if ((int)$workout['trainer_id'] !== (int)$current_user_id) {
+            http_response_code(403);
+            echo json_encode(["status" => "error", "message" => "Unauthorized: You can only delete your own workouts"]);
+            exit;
+        }
+
+        $connection->beginTransaction();
+
+        try {
+            $connection->prepare("DELETE FROM workout_exercises WHERE workout_id = :wid")->execute(['wid' => $workout_id]);
+            $connection->prepare("DELETE FROM workout_favorites WHERE workout_id = :wid")->execute(['wid' => $workout_id]);
+            $connection->prepare("DELETE FROM user_workout_logs WHERE workout_id = :wid")->execute(['wid' => $workout_id]);
+            
+            $delStm = $connection->prepare("DELETE FROM workouts WHERE id = :wid");
+            $delStm->execute(['wid' => $workout_id]);
+
+            $connection->commit();
+            echo json_encode(["status" => "success", "message" => "Workout deleted successfully"]);
+        } catch (Exception $e) {
+            $connection->rollBack();
+            echo json_encode(["status" => "error", "message" => "Failed to delete workout"]);
+        }
+        exit;
+    }
+
     echo json_encode(["status" => "error"]);
 
 } catch (PDOException $e) {
