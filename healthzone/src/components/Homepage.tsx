@@ -23,7 +23,12 @@ import {
   MapPin,
   Star,
 } from "lucide-react";
-import { UPCOMING_ACTIVITIES } from "../lib/activities";
+import {
+  ACTIVITIES_UPDATED_EVENT,
+  ActivityEvent,
+  formatActivitySchedule,
+  getActivityEvents,
+} from "../lib/activities";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -118,6 +123,23 @@ export function HomePage() {
   // MEAL STATE — fetched from backend, no local modal needed
   // =========================================================================
   const [loggedMeals, setLoggedMeals] = useState<any[]>([]);
+  const [activities, setActivities] = useState<ActivityEvent[]>(() =>
+    getActivityEvents(),
+  );
+
+  useEffect(() => {
+    const syncActivities = () => {
+      setActivities(getActivityEvents());
+    };
+
+    window.addEventListener("storage", syncActivities);
+    window.addEventListener(ACTIVITIES_UPDATED_EVENT, syncActivities);
+
+    return () => {
+      window.removeEventListener("storage", syncActivities);
+      window.removeEventListener(ACTIVITIES_UPDATED_EVENT, syncActivities);
+    };
+  }, []);
 
   // Fetch Workouts from your actual Database API
   useEffect(() => {
@@ -900,29 +922,45 @@ export function HomePage() {
             </button>
           </div>
           <div className="space-y-2">
-            {UPCOMING_ACTIVITIES.slice(0, 3).map((activity) => (
-              <div
-                key={activity.id}
+            {activities.length === 0 ? (
+              <button
+                type="button"
                 onClick={() => navigate("/activities")}
-                className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 border border-gray-200 rounded-lg hover:border-[#d97706] transition-colors cursor-pointer"
+                className="w-full rounded-lg border border-dashed border-gray-300 px-4 py-5 text-left transition-colors hover:border-[#d97706]"
               >
-                <div className="text-xl sm:text-2xl flex-shrink-0">
-                  {activity.icon}
+                <p className="text-sm font-medium text-[#1e293b]">
+                  No events yet
+                </p>
+                <p className="mt-1 text-xs text-[#64748b]">
+                  Create the first community event and share it with the group.
+                </p>
+              </button>
+            ) : (
+              activities.slice(0, 3).map((activity) => (
+                <div
+                  key={activity.id}
+                  onClick={() => navigate("/activities")}
+                  className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gray-200 p-2.5 transition-colors hover:border-[#d97706] sm:gap-3 sm:p-3"
+                >
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#d97706]/10 text-[#d97706]">
+                    <Calendar className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-[#1e293b]">
+                      {activity.name}
+                    </p>
+                    <p className="truncate text-[10px] text-[#64748b] sm:text-xs">
+                      Created by {activity.createdBy} •{" "}
+                      {formatActivitySchedule(activity.startsAt)}
+                    </p>
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-[#64748b] sm:text-xs">
+                      <MapPin className="size-3 flex-shrink-0" />
+                      {activity.location}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[#1e293b] text-sm truncate">
-                    {activity.name}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-[#64748b] truncate">
-                    {activity.group} • {activity.schedule}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-[#64748b] flex items-center gap-1 mt-0.5 truncate">
-                    <MapPin className="size-3 flex-shrink-0" />
-                    {activity.location} • {activity.participants} going
-                  </p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
