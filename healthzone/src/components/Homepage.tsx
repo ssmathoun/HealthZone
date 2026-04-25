@@ -23,6 +23,12 @@ import {
   MapPin,
   Star,
 } from "lucide-react";
+import {
+  ACTIVITIES_UPDATED_EVENT,
+  ActivityEvent,
+  formatActivitySchedule,
+  getActivityEvents,
+} from "../lib/activities";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -41,12 +47,10 @@ export function HomePage() {
   const [selectedTrainer, setSelectedTrainer] = useState<any>(null);
 
   // =========================================================================
-  // NUTRITION & SLEEP STATS (TODAY) — fetched from backend
+  // NUTRITION STATS (TODAY) — fetched from backend
   // =========================================================================
   const NUTRITION_URL =
     "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/nutrition_today.php";
-  const SLEEP_URL =
-    "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/sleep.php";
 
   type NutritionToday = {
     goals: { calories: number; protein: number; carbs: number; fat: number };
@@ -56,8 +60,13 @@ export function HomePage() {
 
   const [nutrition, setNutrition] = useState<NutritionToday | null>(null);
   const [nutritionLoading, setNutritionLoading] = useState(true);
+
+  // Sleep tracking
+  const SLEEP_URL =
+    "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/sleep.php";
   const [latestSleep, setLatestSleep] = useState<number>(0);
   const [latestWeight, setLatestWeight] = useState<number | null>(null);
+  const [workoutStreak, setWorkoutStreak] = useState<number>(0);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // =========================================================================
@@ -114,6 +123,23 @@ export function HomePage() {
   // MEAL STATE — fetched from backend, no local modal needed
   // =========================================================================
   const [loggedMeals, setLoggedMeals] = useState<any[]>([]);
+  const [activities, setActivities] = useState<ActivityEvent[]>(() =>
+    getActivityEvents(),
+  );
+
+  useEffect(() => {
+    const syncActivities = () => {
+      setActivities(getActivityEvents());
+    };
+
+    window.addEventListener("storage", syncActivities);
+    window.addEventListener(ACTIVITIES_UPDATED_EVENT, syncActivities);
+
+    return () => {
+      window.removeEventListener("storage", syncActivities);
+      window.removeEventListener(ACTIVITIES_UPDATED_EVENT, syncActivities);
+    };
+  }, []);
 
   // Fetch Workouts from your actual Database API
   useEffect(() => {
@@ -152,15 +178,6 @@ export function HomePage() {
       })
       .catch(() => {});
 
-    // Fetch Latest Sleep Log
-    fetch(`${SLEEP_URL}?action=get_latest`, { credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && typeof data.hours === "number") {
-          setLatestSleep(data.hours);
-        }
-      })
-      .catch(() => console.error("Could not load sleep data"));
     // Fetch latest sleep log
     fetch(`${SLEEP_URL}?action=get_history`, { credentials: "include" })
       .then((res) => res.json())
@@ -185,6 +202,17 @@ export function HomePage() {
         ) {
           setLatestWeight(data.logs[data.logs.length - 1].weight_lbs);
         }
+      })
+      .catch(() => {});
+
+    // Fetch workout streak
+    fetch(
+      "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_streak",
+      { credentials: "include" },
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") setWorkoutStreak(data.streak ?? 0);
       })
       .catch(() => {});
 
@@ -232,6 +260,16 @@ export function HomePage() {
 
       if (data.status === "success") {
         setWorkoutComplete(true);
+        // Refresh streak after workout
+        fetch(
+          "https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/workouts.php?action=get_streak",
+          { credentials: "include" },
+        )
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.status === "success") setWorkoutStreak(d.streak ?? 0);
+          })
+          .catch(() => {});
         // Refresh challenges and leaderboard after workout
         fetch(`${CHALLENGES_URL}?action=get_available_challenges`, {
           credentials: "include",
@@ -306,6 +344,21 @@ export function HomePage() {
     refreshLeaderboard();
   };
 
+  const handleLeaveLeaderboard = async () => {
+    try {
+      const res = await fetch(`${CHALLENGES_URL}?action=leave_leaderboard`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (data?.status !== "success") return;
+    } catch {
+      return;
+    }
+    refreshLeaderboard();
+  };
+
   const handleJoinChallenge = async (challengeId: number) => {
     try {
       await fetch(`${CHALLENGES_URL}?action=join`, {
@@ -324,6 +377,29 @@ export function HomePage() {
         .then((r) => r.json())
         .catch(() => null);
       if (Array.isArray(updated)) setChallenges(updated);
+    }
+  };
+
+  const handleQuitChallenge = async (challengeId: number) => {
+    if (!confirm("Are you sure you want to quit this challenge?")) return;
+    try {
+      await fetch(`${CHALLENGES_URL}?action=quit`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge_id: challengeId }),
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      const updated = await fetch(
+        `${CHALLENGES_URL}?action=get_available_challenges`,
+        { credentials: "include" },
+      )
+        .then((r) => r.json())
+        .catch(() => null);
+      if (Array.isArray(updated)) setChallenges(updated);
+      refreshLeaderboard();
     }
   };
 
@@ -489,6 +565,26 @@ export function HomePage() {
               </>
             )}
           </button>
+          {/* Workout Streak card */}
+          <button
+            onClick={() => navigate("/log-workout")}
+            className="bg-white rounded-lg shadow-md p-2.5 sm:p-3 text-left hover:shadow-lg hover:border-[#d97706] border border-transparent transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
+              <Flame className="size-5 text-[#d97706]" />
+              <span className="text-[10px] sm:text-xs text-[#64748b]">
+                Streak
+              </span>
+            </div>
+            <div className="text-sm sm:text-lg font-bold text-[#1e293b] mb-1">
+              {workoutStreak > 0
+                ? `${workoutStreak} day${workoutStreak === 1 ? "" : "s"}`
+                : "Start now"}
+            </div>
+            <div className="text-[10px] sm:text-xs text-[#64748b]">
+              {workoutStreak > 0 ? "Workout streak" : "No streak yet"}
+            </div>
+          </button>
         </div>
 
         {/* Quick Actions */}
@@ -496,7 +592,7 @@ export function HomePage() {
           <h2 className="text-base font-semibold text-[#1e293b] mb-3">
             Quick Actions
           </h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
               onClick={() => navigate("/log-workout")}
               className="bg-[#d97706] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
@@ -518,13 +614,19 @@ export function HomePage() {
               <UtensilsCrossed className="size-6" />
               <span className="text-xs font-medium">Log Meal</span>
             </button>
-            {/* Replaced Create Recipe with Log Sleep for Quick Actions */}
             <button
               onClick={() => navigate("/sleep")}
-              className="bg-[#64748b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+              className="bg-[#334155] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
             >
-              <Moon className="size-6 text-[#d97706]" />
-              <span className="text-xs font-medium">Log Sleep</span>
+              <Moon className="size-6" />
+              <span className="text-xs font-medium">Sleep Tracker</span>
+            </button>
+            <button
+              onClick={() => navigate("/weight-tracker")}
+              className="bg-[#475569] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+            >
+              <Scale className="size-6" />
+              <span className="text-xs font-medium">Weight Tracker</span>
             </button>
             <button
               onClick={() => navigate("/create-recipe")}
@@ -546,13 +648,6 @@ export function HomePage() {
             >
               <MessageCircle className="size-6" />
               <span className="text-xs font-medium">Forum</span>
-            </button>
-            <button
-              onClick={() => navigate("/weight-tracker")}
-              className="bg-[#1e293b] text-white rounded-lg p-3 flex flex-col items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
-            >
-              <Scale className="size-6" />
-              <span className="text-xs font-medium">Weight Tracker</span>
             </button>
           </div>
         </div>
@@ -642,9 +737,21 @@ export function HomePage() {
                     <span className="text-sm font-medium">
                       {ICON_EMOJI[challenge.icon_name] ?? "🏆"} {challenge.name}
                     </span>
-                    <span className="text-xs text-[#d97706] font-semibold">
-                      +{challenge.points_reward} pts
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[#d97706] font-semibold">
+                        +{challenge.points_reward} pts
+                      </span>
+                      {challenge.is_joined && (
+                        <button
+                          onClick={() =>
+                            handleQuitChallenge(challenge.challenge_id)
+                          }
+                          className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full font-medium hover:bg-red-500/40 transition-colors"
+                        >
+                          Leave
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-300 mb-2">
                     <span>
@@ -736,12 +843,19 @@ export function HomePage() {
                 {myPoints.toLocaleString()} pts
               </span>
             </div>
-            {!myIsRanked && (
+            {!myIsRanked ? (
               <button
                 onClick={handleJoinLeaderboard}
                 className="w-full mt-2 bg-[#d97706] text-white text-sm font-medium py-2 rounded-lg hover:opacity-90 transition-opacity"
               >
                 Join the Competition
+              </button>
+            ) : (
+              <button
+                onClick={handleLeaveLeaderboard}
+                className="w-full mt-2 bg-white text-[#d97706] text-sm font-medium py-2 rounded-lg border border-[#d97706] hover:bg-[#d97706]/10 transition-colors"
+              >
+                Leave Leaderboard
               </button>
             )}
           </div>
@@ -801,60 +915,52 @@ export function HomePage() {
               </h2>
             </div>
             <button
-              onClick={() => navigate("/community")}
+              onClick={() => navigate("/activities")}
               className="text-xs text-[#d97706] font-medium"
             >
               See All
             </button>
           </div>
           <div className="space-y-2">
-            {[
-              {
-                name: "Basketball Game",
-                group: "FitSquad",
-                time: "Today, 6:00 PM",
-                location: "Alumni Arena",
-                participants: 8,
-                icon: "🏀",
-              },
-              {
-                name: "Morning Run",
-                group: "Runners United",
-                time: "Tomorrow, 6:30 AM",
-                location: "Delaware Park",
-                participants: 12,
-                icon: "🏃",
-              },
-              {
-                name: "Yoga Session",
-                group: "Yoga Warriors",
-                time: "Sat, 9:00 AM",
-                location: "Student Union",
-                participants: 15,
-                icon: "🧘",
-              },
-            ].map((activity) => (
-              <div
-                key={activity.name}
-                className="flex items-start gap-2.5 sm:gap-3 p-2.5 sm:p-3 border border-gray-200 rounded-lg hover:border-[#d97706] transition-colors cursor-pointer"
+            {activities.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => navigate("/activities")}
+                className="w-full rounded-lg border border-dashed border-gray-300 px-4 py-5 text-left transition-colors hover:border-[#d97706]"
               >
-                <div className="text-xl sm:text-2xl flex-shrink-0">
-                  {activity.icon}
+                <p className="text-sm font-medium text-[#1e293b]">
+                  No events yet
+                </p>
+                <p className="mt-1 text-xs text-[#64748b]">
+                  Create the first community event and share it with the group.
+                </p>
+              </button>
+            ) : (
+              activities.slice(0, 3).map((activity) => (
+                <div
+                  key={activity.id}
+                  onClick={() => navigate("/activities")}
+                  className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gray-200 p-2.5 transition-colors hover:border-[#d97706] sm:gap-3 sm:p-3"
+                >
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#d97706]/10 text-[#d97706]">
+                    <Calendar className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-[#1e293b]">
+                      {activity.name}
+                    </p>
+                    <p className="truncate text-[10px] text-[#64748b] sm:text-xs">
+                      Created by {activity.createdBy} •{" "}
+                      {formatActivitySchedule(activity.startsAt)}
+                    </p>
+                    <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-[#64748b] sm:text-xs">
+                      <MapPin className="size-3 flex-shrink-0" />
+                      {activity.location}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[#1e293b] text-sm truncate">
-                    {activity.name}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-[#64748b] truncate">
-                    {activity.group} • {activity.time}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-[#64748b] flex items-center gap-1 mt-0.5 truncate">
-                    <MapPin className="size-3 flex-shrink-0" />
-                    {activity.location} • {activity.participants} going
-                  </p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

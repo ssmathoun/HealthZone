@@ -2,6 +2,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  color-scheme: light;
   --font-size: 16px;
   --background: #ffffff;
   --foreground: oklch(0.145 0 0);
@@ -43,6 +44,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
@@ -127,8 +129,74 @@
 
   body {
     @apply bg-background text-foreground;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  /* Legacy screens still use fixed light-mode Tailwind classes. These exact-token
+     overrides let the shared theme toggle darken the current UI without a full
+     page-by-page refactor. */
+  .dark [class~="bg-[#fdfcfb]"] {
+    background-color: #0f172a !important;
+  }
+
+  .dark [class~="bg-white"] {
+    background-color: #243246 !important;
+  }
+
+  .dark [class~="bg-gray-50"] {
+    background-color: #334155 !important;
+  }
+
+  .dark [class~="bg-gray-100"] {
+    background-color: #475569 !important;
+  }
+
+  .dark [class~="bg-gray-300"] {
+    background-color: #475569 !important;
+  }
+
+  .dark [class~="border-gray-200"] {
+    border-color: #475569 !important;
+  }
+
+  .dark [class~="border-gray-300"] {
+    border-color: #64748b !important;
+  }
+
+  .dark [class~="bg-[#1e293b]/5"] {
+    background-color: rgba(148, 163, 184, 0.22) !important;
+  }
+
+  .dark [class~="text-[#1e293b]"] {
+    color: #e5e7eb !important;
+  }
+
+  .dark [class~="text-[#64748b]"] {
+    color: #94a3b8 !important;
+  }
+
+  .dark [class~="shadow-md"] {
+    box-shadow:
+      0 0 0 1px rgba(148, 163, 184, 0.08),
+      0 16px 30px rgba(2, 6, 23, 0.28) !important;
+  }
+
+  .dark [class~="hover:bg-gray-50"]:hover {
+    background-color: #1f2937 !important;
+  }
+
+  .dark [class~="hover:bg-gray-100"]:hover {
+    background-color: #334155 !important;
+  }
+
+  .dark [class~="hover:text-[#1e293b]"]:hover {
+    color: #f8fafc !important;
   }
 }
 

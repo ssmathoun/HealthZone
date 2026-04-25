@@ -58,6 +58,34 @@ try {
         exit;
     }
 
+    if ($method === 'POST' && $action === 'leave_leaderboard') {
+        echo json_encode(leave_leaderboard($connection, $userId));
+        exit;
+    }
+
+    if ($method === 'POST' && $action === 'quit') {
+        $challengeId = isset($data['challenge_id']) ? (int) $data['challenge_id'] : 0;
+
+        if ($challengeId <= 0) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Challenge ID is required.',
+            ]);
+            exit;
+        }
+
+        // Remove user from challenge
+        $stm = $connection->prepare("DELETE FROM user_challenges WHERE user_id = :uid AND challenge_id = :cid");
+        $stm->execute(['uid' => $userId, 'cid' => $challengeId]);
+
+        if ($stm->rowCount() > 0) {
+            echo json_encode(['status' => 'success', 'message' => 'You have quit the challenge.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'You were not part of this challenge.']);
+        }
+        exit;
+    }
+
     echo json_encode([
         'status' => 'error',
         'message' => 'Invalid action specified.',

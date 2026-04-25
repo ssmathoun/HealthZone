@@ -5,17 +5,21 @@ export const ProfilePageMobile = () => {
     const [user, setUser] = useState({
         username: '',
         email: '',
-        avatar: ''
+        avatar: '',
+        bio: ''
     });
 
     const [editedUser, setEditedUser] = useState({
         username: '',
-        email: ''
+        email: '',
+        bio: ''
     });
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [message, setMessage] = useState('');
+    
+    const [isEditingBio, setIsEditingBio] = useState(false);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -27,10 +31,14 @@ export const ProfilePageMobile = () => {
                 const response = await fetch(API_BASE, { credentials: 'include' });
                 const data = await response.json();
                 if (data.status === 'success') {
-                    setUser(data.user);
+                    setUser({
+                        ...data.user,
+                        bio: data.user.bio || ''
+                    });
                     setEditedUser({
                         username: data.user.username,
-                        email: data.user.email
+                        email: data.user.email,
+                        bio: data.user.bio || ''
                     });
                     const avatarPath = data.user.avatar
                         ? `https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${data.user.avatar}`
@@ -64,10 +72,11 @@ export const ProfilePageMobile = () => {
         if (selectedFile) formData.append('avatar', selectedFile);
         if (editedUser.username !== user.username) formData.append('username', editedUser.username);
         if (editedUser.email !== user.email) formData.append('email', editedUser.email);
+        if (editedUser.bio !== user.bio) formData.append('bio', editedUser.bio);
 
-        // Check if there are any changes
-        if (!selectedFile && editedUser.username === user.username && editedUser.email === user.email) {
+        if (!selectedFile && editedUser.username === user.username && editedUser.email === user.email && editedUser.bio === user.bio) {
             setMessage('No changes made.');
+            setIsEditingBio(false);
             return;
         }
 
@@ -84,8 +93,11 @@ export const ProfilePageMobile = () => {
                 setUser({
                     ...user,
                     username: editedUser.username,
-                    email: editedUser.email
+                    email: editedUser.email,
+                    bio: editedUser.bio
                 });
+                setIsEditingBio(false);
+                
                 if (result.avatar_url) {
                     setPreviewUrl(`https://aptitude.cse.buffalo.edu/CSE442/2026-Spring/cse-442v/php/${result.avatar_url}`);
                 }
@@ -135,6 +147,50 @@ export const ProfilePageMobile = () => {
                 <section className="form-group">
                     <label>Email</label>
                     <input type="email" value={editedUser.email} onChange={(e) => setEditedUser({...editedUser, email: e.target.value})} />
+                </section>
+
+                <section className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <label style={{ marginBottom: 0 }}>Bio</label>
+                        {!isEditingBio && (
+                            <button 
+                                type="button" 
+                                onClick={() => setIsEditingBio(true)}
+                                style={{ background: 'none', border: 'none', color: '#d97706', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
+                            >
+                                {user.bio ? 'Edit Bio' : 'Add Bio'}
+                            </button>
+                        )}
+                    </div>
+
+                    {isEditingBio ? (
+                        <textarea 
+                            value={editedUser.bio} 
+                            onChange={(e) => setEditedUser({...editedUser, bio: e.target.value})}
+                            placeholder="Tell us about your fitness journey..."
+                            rows={3}
+                            style={{ 
+                                width: '100%', 
+                                padding: '12px', 
+                                borderRadius: '8px', 
+                                border: '1px solid #e2e8f0',
+                                resize: 'vertical',
+                                fontSize: '14px'
+                            }}
+                        />
+                    ) : (
+                        <p style={{ 
+                            color: user.bio ? '#1e293b' : '#64748b', 
+                            fontSize: '14px', 
+                            padding: '12px',
+                            backgroundColor: '#f8fafc',
+                            borderRadius: '8px',
+                            minHeight: '45px',
+                            border: '1px solid transparent'
+                        }}>
+                            {user.bio || "No bio added yet."}
+                        </p>
+                    )}
                 </section>
 
                 {message && (
